@@ -1,0 +1,11 @@
+{
+  "appId": "fr.yskill.survivor",
+  "appName": "YSkill Survivor",
+  "webDir": "www/play",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0c0f14" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="YSkill Survivor — survive, score, upgrade. Free arcade survivor game by YSkill Studio." />
+  <link rel="canonical" href="https://yskillstudio.com/play/" />
+  <meta property="og:url" content="https://yskillstudio.com/play/" />
+  <title>YSkill Survivor</title>
+  <link rel="stylesheet" href="./css/app.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark">Y</span>
+        <div>
+          <strong data-i18n="app.title">YSkill Survivor</strong>
+          <small data-i18n="app.tagline">Survis. Score. Améliore.</small>
+        </div>
+      </div>
+      <div class="ys-pill"><span data-ys-balance id="ysBalance">0</span> YS</div>
+    </header>
+
+    <main>
+      <section id="screenHome" class="screen">
+        <div class="hero-card">
+          <p class="hero-tag">v0.3 · 9:16 mobile</p>
+          <h1 data-i18n="app.title">YSkill Survivor</h1>
+          <p data-i18n="app.tagline">Survis. Score. Améliore.</p>
+        </div>
+        <nav class="menu-grid">
+          <button type="button" class="btn btn-primary btn-lg" data-nav="play" data-i18n="nav.play">Jouer</button>
+          <button type="button" class="btn" data-nav="shop" data-i18n="nav.shop">Shop YS</button>
+          <button type="button" class="btn" data-nav="scores" data-i18n="nav.scores">Scores</button>
+          <button type="button" class="btn" data-nav="settings" data-i18n="nav.settings">Réglages</button>
+        </nav>
+      </section>
+
+      <section id="screenRun" class="screen screen-run" hidden>
+        <div class="run-shell">
+          <div class="hud hud-run">
+            <div class="hud-stat"><span data-i18n="hud.score">Score</span> <strong id="hudScore">0</strong></div>
+            <div class="hud-stat"><span data-i18n="hud.time">Temps</span> <strong id="hudTime">0:00</strong></div>
+            <div class="hud-stat"><span data-i18n="hud.runLevel">Niv.</span> <strong id="hudRunLevel">0</strong></div>
+            <div class="hud-stat"><span data-i18n="hud.hp">Vie</span> <strong id="hudHp">1</strong></div>
+            <button type="button" class="btn btn-sm btn-pause" id="btnPause" data-i18n="btn.pause" aria-label="Pause">⏸</button>
+          </div>
+          <div class="run-stage">
+            <div class="canvas-wrap">
+              <canvas id="gameCanvas" width="360" height="640" aria-label="YSkill Survivor arena"></canvas>
+            </div>
+            <div id="joystickRoot" class="joystick-root" hidden aria-label="Joystick"></div>
+          </div>
+          <p class="hint" id="runHint">Joystick · Boss 5:00</p>
+        </div>
+        <div id="pauseOverlay" class="overlay overlay-run" hidden>
+          <div class="pause-card panel">
+            <h2 data-i18n="pause.title">Pause</h2>
+            <button type="button" class="btn btn-primary btn-lg" id="btnResume" data-i18n="btn.resume">Reprendre</button>
+            <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
+          </div>
+        </div>
+        <div id="levelUpOverlay" class="overlay overlay-run" hidden>
+          <div class="levelup-card panel">
+            <h2 data-i18n="levelup.title">Level up !</h2>
+            <p class="muted levelup-sub" data-i18n="levelup.sub">Choisis 1 bonus pour cette run</p>
+            <div id="levelUpChoices" class="levelup-choices"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenGameOver" class="screen" hidden>
+        <div class="panel">
+          <h2 data-i18n="go.title">Run terminée</h2>
+          <p class="stat-line"><span data-i18n="hud.score">Score</span>: <strong id="goScore">0</strong></p>
+          <p class="stat-line"><span data-i18n="go.ysEarned">YS gagnés</span>: <strong id="goYs">0</strong></p>
+          <p class="stat-line"><span data-i18n="go.best">Record</span>: <strong id="goBest">0</strong></p>
+          <div class="btn-stack">
+            <button type="button" class="btn btn-primary" id="btnRetry" data-i18n="btn.retry">Rejouer</button>
+            <button type="button" class="btn btn-accent" id="btnRevive" data-i18n="go.reviveAd">Pub → Revive</button>
+            <button type="button" class="btn" id="btnDoubleYs" data-i18n="go.doubleAd">Pub → Double YS</button>
+            <button type="button" class="btn" id="btnGoMenu" data-i18n="btn.menu">Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenShop" class="screen" hidden>
+        <div class="panel">
+          <h2 data-i18n="shop.title">Améliorations permanentes</h2>
+          <p class="muted"><span data-i18n="shop.balance">Solde YS</span>: <strong data-ys-balance>0</strong></p>
+          <div id="shopList" class="shop-list"></div>
+          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
+        </div>
+      </section>
+
+      <section id="screenScores" class="screen" hidden>
+        <div class="panel">
+          <h2 data-i18n="scores.title">Meilleurs scores</h2>
+          <div id="scoresList" class="scores-list"></div>
+          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
+        </div>
+      </section>
+
+      <section id="screenSettings" class="screen" hidden>
+        <div class="panel">
+          <h2 data-i18n="nav.settings">Réglages</h2>
+          <label class="toggle-row">
+            <span data-i18n="settings.sound">Effets sonores</span>
+            <input type="checkbox" id="settingSound" checked />
+          </label>
+          <label class="toggle-row">
+            <span data-i18n="settings.music">Musique</span>
+            <input type="checkbox" id="settingMusic" />
+          </label>
+          <label class="toggle-row">
+            <span data-i18n="settings.haptics">Vibrations</span>
+            <input type="checkbox" id="settingHaptics" checked />
+          </label>
+          <label class="toggle-row">
+            <span data-i18n="settings.lang">Langue</span>
+            <select id="settingLang">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">© <a href="/">YSkill Studio</a> · <a href="/privacy.html">Confidentialité</a></footer>
+  </div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

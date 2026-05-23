@@ -1,0 +1,23 @@
+{
+  "name": "yskill-survivor",
+  "version": "0.3.0",
+  "private": true,
+  "description": "YSkill Survivor — arcade survivor mobile (web + Android)",
+  "scripts": {
+    "start": "npx --yes serve www -p 5173",
+    "deploy": "wrangler pages deploy www --project-name=yskillstudio",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "android:init": "npx cap add android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/haptics": "^7.0.1",
+    "@capacitor/status-bar": "^7.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0"
+  }
+}

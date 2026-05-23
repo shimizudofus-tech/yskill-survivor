@@ -1,0 +1,44 @@
+/** YSkill Survivor — shared constants */
+export const STORAGE_KEY = "yskill-survivor:v1";
+/** Logical arena — portrait 9:16 (mobile-first). */
+export const ARENA_W = 360;
+export const ARENA_H = 640;
+export const ARENA_RATIO = "9 / 16";
+export const PLAYER_R = 14;
+export const BASE_FIRE_MS = 420;
+export const BOSS_AT_MS = 5 * 60 * 1000;
+export const BOSS_WARN_MS = BOSS_AT_MS - 2000;
+export const BOSS_BONUS = 1000;
+export const MAX_LOCAL_SCORES = 10;
+export const LEVEL_UP_INTERVAL_MS = 45000;
+
+/** Améliorations temporaires pendant une run (choix 1/3 toutes les 45 s). */
+export const RUN_UPGRADE_POOL = [
+  { id: "runFire", max: 8 },
+  { id: "runDamage", max: 10 },
+  { id: "runSpeed", max: 6 },
+  { id: "runMagnet", max: 6 },
+  { id: "runPierce", max: 5 },
+  { id: "runVitality", max: 2 },
+];
+
+export const UPGRADE_CATALOG = [
+  { id: "attackSpeed", baseCost: 20 },
+  { id: "damage", baseCost: 25 },
+  { id: "moveSpeed", baseCost: 15 },
+  { id: "bulletSpeed", baseCost: 25 },
+  { id: "pickupMagnet", baseCost: 35 },
+  { id: "scoreBoost", baseCost: 50 },
+  { id: "thickSkin", baseCost: 60 },
+  { id: "multishot", baseCost: 100 },
+];
+
+export const ENEMY_TYPES = [
+  { id: "drifter", shape: "circle", hp: 1, r: 12, speedMul: 1 },
+  { id: "spark", shape: "circle", hp: 1, r: 8, speedMul: 1.35 },
+  { id: "wedge", shape: "triangle", hp: 1, r: 13, speedMul: 1.1 },
+  { id: "ring", shape: "ring", hp: 2, r: 14, speedMul: 0.95 },
+  { id: "hex", shape: "hex", hp: 3, r: 15, speedMul: 0.88 },
+];
+
+export const PALETTE = ["#7ecbff", "#c49bff", "#ff9a62", "#8dffb2", "#ffe566"];

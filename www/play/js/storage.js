@@ -1,17 +1,41 @@
 import { STORAGE_KEY, UPGRADE_CATALOG, MAX_LOCAL_SCORES } from "./config.js";
+import { STAGES, getNextStageId } from "./stages.js";
+
+const DEFAULT_ADVENTURE = {
+  unlockedStage: 1,
+  completedStages: {},
+  stageScores: {},
+  bossesDefeated: 0,
+};
 
 const DEFAULT = {
   ys: 0,
   upgrades: {},
   scores: [],
+  adventure: structuredClone(DEFAULT_ADVENTURE),
+  fullSkill: { scores: [] },
   settings: { sound: true, music: false, locale: "fr", haptics: true },
   stats: { runs: 0, totalScore: 0 },
 };
 
+function normalizeAdventure(adventure) {
+  const base = structuredClone(DEFAULT_ADVENTURE);
+  if (!adventure || typeof adventure !== "object") return base;
+  return {
+    unlockedStage: Math.max(1, Math.min(STAGES.length, Math.floor(Number(adventure.unlockedStage) || 1))),
+    completedStages: { ...base.completedStages, ...(adventure.completedStages || {}) },
+    stageScores: { ...base.stageScores, ...(adventure.stageScores || {}) },
+    bossesDefeated: Math.max(0, Math.floor(Number(adventure.bossesDefeated) || 0)),
+  };
+}
+
 function loadRaw() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : structuredClone(DEFAULT);
+    const parsed = raw ? JSON.parse(raw) : structuredClone(DEFAULT);
+    parsed.adventure = normalizeAdventure(parsed.adventure);
+    parsed.fullSkill = parsed.fullSkill || { scores: [] };
+    return parsed;
   } catch {
     return structuredClone(DEFAULT);
   }
@@ -88,6 +112,85 @@ export function getUpgradeEffects() {
     pickupScoreMult: score > 0 ? Math.pow(1.25, score) : 1,
     invulnMs: 900 + skin * 500,
   };
+}
+
+export function getAdventure() {
+  return state.adventure;
+}
+
+export function isStageUnlocked(stageId) {
+  return Number(stageId) <= state.adventure.unlockedStage;
+}
+
+export function isStageCompleted(stageId) {
+  return Boolean(state.adventure.completedStages[String(stageId)]);
+}
+
+export function getStageRecord(stageId) {
+  return state.adventure.stageScores[String(stageId)] || null;
+}
+
+function updateStageRecord(stageId, patch) {
+  const key = String(stageId);
+  const prev = state.adventure.stageScores[key] || {};
+  state.adventure.stageScores[key] = { ...prev, ...patch };
+}
+
+export function recordAdventureVictory(stageId, { score, timeMs, revived }) {
+  const stage = STAGES.find((s) => s.id === Number(stageId));
+  if (!stage) return { ysEarned: 0, firstClear: false };
+
+  const key = String(stageId);
+  const firstClear = !state.adventure.completedStages[key];
+  const ysEarned = firstClear ? stage.rewardFirstClear : stage.rewardReplay;
+
+  state.adventure.completedStages[key] = true;
+  state.adventure.bossesDefeated += 1;
+
+  const nextId = getNextStageId(stageId);
+  if (nextId && nextId > state.adventure.unlockedStage) {
+    state.adventure.unlockedStage = nextId;
+  }
+
+  const prev = getStageRecord(stageId);
+  const assisted = Boolean(revived);
+  const leaderboardEligible = !assisted;
+  const bestScore = Math.max(prev?.bestScore || 0, score);
+  const bestTimeMs =
+    !prev?.bestTimeMs || !prev?.bossDefeated || timeMs < prev.bestTimeMs
+      ? timeMs
+      : prev.bestTimeMs;
+
+  updateStageRecord(stageId, {
+    bestScore,
+    bestTimeMs,
+    bossDefeated: true,
+    assisted: prev?.assisted && prev?.bossDefeated ? prev.assisted && assisted : assisted,
+    leaderboardEligible: prev?.leaderboardEligible === false ? false : leaderboardEligible,
+    lastVictoryAt: Date.now(),
+  });
+
+  if (ysEarned > 0) addYs(ysEarned);
+  state.stats.runs += 1;
+  state.stats.totalScore += score;
+  save();
+
+  return { ysEarned, firstClear, nextStageId: nextId };
+}
+
+export function recordAdventureDefeat(stageId, { score, timeMs, revived }) {
+  const prev = getStageRecord(stageId);
+  const bestScore = Math.max(prev?.bestScore || 0, score);
+  updateStageRecord(stageId, {
+    bestScore,
+    bossDefeated: prev?.bossDefeated || false,
+    assisted: prev?.assisted || Boolean(revived),
+    lastDefeatAt: Date.now(),
+  });
+  state.stats.runs += 1;
+  state.stats.totalScore += score;
+  save();
+  return { bestScore };
 }
 
 export function recordRun(score) {

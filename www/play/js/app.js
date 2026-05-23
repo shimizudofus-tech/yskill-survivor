@@ -1,4 +1,4 @@
-import { t, setLocale, applyI18n, getLocale } from "./i18n.js";
+import { t, setLocale, applyI18n, getLocale, stageName, bossName, formatDurationMs, STAGES } from "./i18n.js";
 import {
   getYs,
   addYs,
@@ -6,14 +6,18 @@ import {
   upgradeCost,
   upgradeLevel,
   getUpgradeEffects,
-  recordRun,
   ysFromScore,
   getSettings,
   patchSettings,
-  getState,
+  isStageUnlocked,
+  isStageCompleted,
+  getStageRecord,
+  recordAdventureVictory,
+  recordAdventureDefeat,
 } from "./storage.js";
 import { UPGRADE_CATALOG } from "./config.js";
-import { YSkillSurvivorGame } from "./game.js";
+import { getStageById, getNextStageId } from "./stages.js";
+import { YSkillSurvivorGame, formatTime } from "./game.js";
 import { Sfx } from "./audio.js";
 import { VirtualJoystick, prefersTouchControls } from "./joystick.js";
 import {
@@ -26,8 +30,10 @@ import {
 
 const screens = {
   home: document.getElementById("screenHome"),
+  adventure: document.getElementById("screenAdventure"),
   run: document.getElementById("screenRun"),
   over: document.getElementById("screenGameOver"),
+  victory: document.getElementById("screenVictory"),
   shop: document.getElementById("screenShop"),
   scores: document.getElementById("screenScores"),
   settings: document.getElementById("screenSettings"),
@@ -41,7 +47,7 @@ const hudRunLevel = document.getElementById("hudRunLevel");
 const ysBalanceEl = document.getElementById("ysBalance");
 const goScore = document.getElementById("goScore");
 const goYs = document.getElementById("goYs");
-const goBest = document.getElementById("goBest");
+const goStageName = document.getElementById("goStageName");
 const shopList = document.getElementById("shopList");
 const scoresList = document.getElementById("scoresList");
 const btnRevive = document.getElementById("btnRevive");
@@ -50,13 +56,32 @@ const levelUpOverlay = document.getElementById("levelUpOverlay");
 const levelUpChoices = document.getElementById("levelUpChoices");
 const joystickRoot = document.getElementById("joystickRoot");
 const runHint = document.getElementById("runHint");
+const adventurePath = document.getElementById("adventurePath");
+const stagePanel = document.getElementById("stagePanel");
+const stagePanelName = document.getElementById("stagePanelName");
+const stagePanelBoss = document.getElementById("stagePanelBoss");
+const stagePanelScore = document.getElementById("stagePanelScore");
+const stagePanelTime = document.getElementById("stagePanelTime");
+const stagePanelRewardFirst = document.getElementById("stagePanelRewardFirst");
+const stagePanelRewardReplay = document.getElementById("stagePanelRewardReplay");
+const btnStageLaunch = document.getElementById("btnStageLaunch");
+const btnStageClose = document.getElementById("btnStageClose");
+const vicStageName = document.getElementById("vicStageName");
+const vicBossName = document.getElementById("vicBossName");
+const vicScore = document.getElementById("vicScore");
+const vicTime = document.getElementById("vicTime");
+const vicYs = document.getElementById("vicYs");
+const vicRewardLabel = document.getElementById("vicRewardLabel");
+const btnNextStage = document.getElementById("btnNextStage");
 
 let game = null;
 let sfx = null;
 let joystick = null;
-let lastRunScore = 0;
-let lastYsEarned = 0;
-let ysDoubled = false;
+let currentRunConfig = null;
+let selectedStageId = null;
+let runSettled = false;
+let lastRunResult = null;
+let scoresTab = "adventure";
 let runPaused = false;
 
 function useTouchLayout() {
@@ -65,7 +90,7 @@ function useTouchLayout() {
 
 function showScreen(name) {
   Object.entries(screens).forEach(([key, el]) => {
-    el.hidden = key !== name;
+    if (el) el.hidden = key !== name;
   });
   const inRun = name === "run";
   document.body.classList.toggle("run-active", inRun);
@@ -83,6 +108,18 @@ function refreshYs() {
 function triggerHaptic(style) {
   if (!getSettings().haptics) return;
   void hapticImpact(style);
+}
+
+function buildRunConfig(stageId) {
+  const stageConfig = getStageById(stageId);
+  return {
+    mode: "adventure",
+    stageId: Number(stageId),
+    stageConfig,
+    allowPermanentUpgrades: true,
+    allowRevive: true,
+    leaderboardEligible: true,
+  };
 }
 
 function pauseRun(showOverlay = true) {
@@ -107,9 +144,7 @@ function destroyJoystick() {
     joystick.destroy();
     joystick = null;
   }
-  if (joystickRoot) {
-    joystickRoot.hidden = true;
-  }
+  if (joystickRoot) joystickRoot.hidden = true;
 }
 
 function setupJoystick() {
@@ -128,15 +163,17 @@ function initLocale() {
 }
 
 function updateRunHint() {
-  if (!runHint) return;
-  runHint.textContent = useTouchLayout() ? t("run.hintTouch") : t("run.hintKeyboard");
+  if (!runHint || !currentRunConfig?.stageConfig) return;
+  const mins = Math.round(currentRunConfig.stageConfig.durationBeforeBossMs / 60000);
+  const base = useTouchLayout() ? t("run.hintTouch") : t("run.hintKeyboard");
+  runHint.textContent = `${base} · ~${mins} min`;
 }
 
 function bindNav() {
   document.querySelectorAll("[data-nav]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.nav;
-      if (target === "play") startRun();
+      if (target === "adventure") openAdventure();
       else if (target === "shop") openShop();
       else if (target === "scores") openScores();
       else if (target === "settings") openSettings();
@@ -178,8 +215,10 @@ function showLevelUp(choices) {
 
 function goHome() {
   runPaused = false;
+  runSettled = false;
   pauseOverlay.hidden = true;
   hideLevelUp();
+  closeStagePanel();
   lockDocumentScroll(false);
   destroyJoystick();
   if (game) {
@@ -187,11 +226,76 @@ function goHome() {
     game.destroy();
     game = null;
   }
+  currentRunConfig = null;
   showScreen("home");
   refreshYs();
 }
 
-function startRun() {
+function openAdventure() {
+  renderAdventureMap();
+  showScreen("adventure");
+}
+
+function closeStagePanel() {
+  if (stagePanel) stagePanel.hidden = true;
+  selectedStageId = null;
+}
+
+function openStagePanel(stageId) {
+  const stage = getStageById(stageId);
+  if (!stage || !isStageUnlocked(stageId)) return;
+  selectedStageId = stageId;
+  const record = getStageRecord(stageId);
+  stagePanelName.textContent = `${stage.id}. ${stageName(stage)}`;
+  stagePanelBoss.textContent = bossName(stage.bossId);
+  stagePanelScore.textContent = record?.bestScore ? String(record.bestScore) : "—";
+  stagePanelTime.textContent =
+    record?.bestTimeMs && record.bossDefeated ? formatDurationMs(record.bestTimeMs) : "—";
+  stagePanelRewardFirst.textContent = String(stage.rewardFirstClear);
+  stagePanelRewardReplay.textContent = String(stage.rewardReplay);
+  stagePanel.hidden = false;
+}
+
+function renderAdventureMap() {
+  if (!adventurePath) return;
+  adventurePath.innerHTML = "";
+  STAGES.forEach((stage, index) => {
+    const unlocked = isStageUnlocked(stage.id);
+    const completed = isStageCompleted(stage.id);
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = "adventure-node";
+    if (completed) node.classList.add("is-completed");
+    else if (unlocked) node.classList.add("is-available");
+    else node.classList.add("is-locked");
+    node.disabled = !unlocked;
+    node.innerHTML = `
+      <span class="adventure-node-num">${stage.id}</span>
+      <span class="adventure-node-body">
+        <strong>${stageName(stage)}</strong>
+        <small>${bossName(stage.bossId)}</small>
+      </span>
+      <span class="adventure-node-badge">${completed ? "★" : unlocked ? "▶" : "🔒"}</span>
+    `;
+    node.addEventListener("click", () => openStagePanel(stage.id));
+    adventurePath.appendChild(node);
+    if (index < STAGES.length - 1) {
+      const connector = document.createElement("div");
+      connector.className = "adventure-connector";
+      if (completed) connector.classList.add("is-done");
+      adventurePath.appendChild(connector);
+    }
+  });
+}
+
+function startAdventureRun(stageId) {
+  const stage = getStageById(stageId);
+  if (!stage || !isStageUnlocked(stageId)) return;
+  closeStagePanel();
+  currentRunConfig = buildRunConfig(stageId);
+  runSettled = false;
+  lastRunResult = null;
+
   if (game) {
     game.destroy();
     game = null;
@@ -200,9 +304,12 @@ function startRun() {
   const settings = getSettings();
   const stick = setupJoystick();
   sfx = new Sfx(settings.sound);
+  const effects = currentRunConfig.allowPermanentUpgrades ? getUpgradeEffects() : {};
+
   game = new YSkillSurvivorGame(canvas, {
     seed: Date.now(),
-    effects: getUpgradeEffects(),
+    effects,
+    runConfig: currentRunConfig,
     sfx,
     sound: settings.sound,
     useCanvasTouch: !stick,
@@ -216,9 +323,10 @@ function startRun() {
       if (hudRunLevel) hudRunLevel.textContent = String(s.runLevel ?? 0);
       hudHp.textContent = s.maxHp > 1 ? `${s.hp}/${s.maxHp}` : String(s.hp);
     },
-    onGameOver: (payload) => finishRun(payload),
+    onGameOver: (payload) => finishDefeat(payload),
+    onVictory: (payload) => finishVictory(payload),
   });
-  ysDoubled = false;
+
   runPaused = false;
   pauseOverlay.hidden = true;
   hideLevelUp();
@@ -228,28 +336,91 @@ function startRun() {
   lockDocumentScroll(true);
 }
 
-function finishRun({ score, canRevive }) {
+function settleRunOnce(fn) {
+  if (runSettled) return false;
+  runSettled = true;
+  fn();
+  return true;
+}
+
+function finishDefeat(payload) {
   lockDocumentScroll(false);
   hideLevelUp();
   destroyJoystick();
-  lastRunScore = score;
-  lastYsEarned = ysFromScore(score);
-  addYs(lastYsEarned);
-  recordRun(score);
-  const best = getState().scores[0]?.score ?? score;
-  goScore.textContent = String(score);
-  goYs.textContent = String(lastYsEarned);
-  goBest.textContent = String(best);
-  btnRevive.hidden = !canRevive;
   triggerHaptic("heavy");
-  showScreen("over");
+
+  const stageId = currentRunConfig?.stageId;
+  const stage = getStageById(stageId);
+  lastRunResult = { ...payload, stageId };
+
+  goScore.textContent = String(payload.score);
+  if (goStageName && stage) goStageName.textContent = stageName(stage);
+  btnRevive.hidden = !payload.canRevive;
+
+  if (payload.canRevive) {
+    goYs.textContent = "—";
+    showScreen("over");
+    return;
+  }
+
+  if (settleRunOnce(() => _applyDefeat(payload))) {
+    showScreen("over");
+    refreshYs();
+  }
+}
+
+function settlePendingDefeat() {
+  if (runSettled || !lastRunResult) return;
+  const { score, elapsedMs, revived, stageId } = lastRunResult;
+  if (settleRunOnce(() => _applyDefeat({ score, elapsedMs, revived, canRevive: false }))) {
+    refreshYs();
+  }
+}
+
+function _applyDefeat({ score, elapsedMs, canRevive, revived }) {
+  const stageId = currentRunConfig?.stageId;
+  const stage = getStageById(stageId);
+  const ysEarned = ysFromScore(score);
+  if (ysEarned > 0) addYs(ysEarned);
+  recordAdventureDefeat(stageId, { score, timeMs: elapsedMs, revived });
+  lastRunResult = { score, elapsedMs, ysEarned, canRevive, revived, stageId };
+  goScore.textContent = String(score);
+  goYs.textContent = String(ysEarned);
+  if (goStageName && stage) goStageName.textContent = stageName(stage);
+  btnRevive.hidden = !canRevive;
+}
+
+function finishVictory(payload) {
+  if (!settleRunOnce(() => _applyVictory(payload))) return;
+  lockDocumentScroll(false);
+  hideLevelUp();
+  destroyJoystick();
+  triggerHaptic("heavy");
+  showScreen("victory");
   refreshYs();
 }
 
-function finishRunAfterReviveDeath() {
-  if (!game) return;
-  const score = game.score();
-  finishRun({ score, canRevive: false });
+function _applyVictory({ score, elapsedMs, revived, stageId, stageName: sName, bossName: bName }) {
+  const sid = stageId ?? currentRunConfig?.stageId;
+  const result = recordAdventureVictory(sid, { score, timeMs: elapsedMs, revived });
+  lastRunResult = {
+    score,
+    elapsedMs,
+    ysEarned: result.ysEarned,
+    firstClear: result.firstClear,
+    nextStageId: result.nextStageId,
+    stageId: sid,
+  };
+  const stage = getStageById(sid);
+  vicStageName.textContent = sName || (stage ? stageName(stage) : "—");
+  vicBossName.textContent = bName || (stage ? bossName(stage.bossId) : "—");
+  vicScore.textContent = String(score);
+  vicTime.textContent = formatTime(elapsedMs);
+  vicYs.textContent = String(result.ysEarned);
+  vicRewardLabel.textContent = result.firstClear ? t("victory.firstClear") : t("victory.replay");
+  const nextUnlocked = result.nextStageId && isStageUnlocked(result.nextStageId);
+  btnNextStage.hidden = !nextUnlocked;
+  if (nextUnlocked) btnNextStage.dataset.nextStage = String(result.nextStageId);
 }
 
 /** Stub AdMob — replace with @capacitor-community/admob in M4 */
@@ -263,17 +434,24 @@ export function showRewardedAd(onReward) {
 }
 
 function bindRunControls() {
-  document.getElementById("btnPause").addEventListener("click", () => {
-    pauseRun(true);
-  });
-  document.getElementById("btnResume").addEventListener("click", () => {
-    resumeRun();
-  });
+  document.getElementById("btnPause").addEventListener("click", () => pauseRun(true));
+  document.getElementById("btnResume").addEventListener("click", () => resumeRun());
 }
 
 function bindGameOver() {
-  document.getElementById("btnRetry").addEventListener("click", () => startRun());
-  document.getElementById("btnGoMenu").addEventListener("click", () => goHome());
+  document.getElementById("btnRetry").addEventListener("click", () => {
+    settlePendingDefeat();
+    if (lastRunResult?.stageId) startAdventureRun(lastRunResult.stageId);
+  });
+  document.getElementById("btnGoMenu").addEventListener("click", () => {
+    settlePendingDefeat();
+    goHome();
+  });
+  document.getElementById("btnGoAdventure").addEventListener("click", () => {
+    settlePendingDefeat();
+    goHome();
+    openAdventure();
+  });
 
   btnRevive.addEventListener("click", () => {
     showRewardedAd(() => {
@@ -283,22 +461,28 @@ function bindGameOver() {
         game.getMoveVector = joystick ? () => joystick.getVector() : null;
         showScreen("run");
         lockDocumentScroll(true);
-        game.onGameOver = () => finishRunAfterReviveDeath();
+        game.onGameOver = (payload) => finishDefeat(payload);
       }
     });
   });
 
-  document.getElementById("btnDoubleYs").addEventListener("click", () => {
-    if (ysDoubled) return;
-    showRewardedAd(() => {
-      if (ysDoubled) return;
-      ysDoubled = true;
-      addYs(lastYsEarned);
-      goYs.textContent = String(lastYsEarned * 2);
-      refreshYs();
-      triggerHaptic("light");
-    });
+  btnStageLaunch?.addEventListener("click", () => {
+    if (selectedStageId) startAdventureRun(selectedStageId);
   });
+  btnStageClose?.addEventListener("click", () => closeStagePanel());
+
+  btnNextStage?.addEventListener("click", () => {
+    const nextId = btnNextStage.dataset.nextStage;
+    if (nextId) startAdventureRun(Number(nextId));
+  });
+  document.getElementById("btnVictoryRetry")?.addEventListener("click", () => {
+    if (lastRunResult?.stageId) startAdventureRun(lastRunResult.stageId);
+  });
+  document.getElementById("btnVictoryMap")?.addEventListener("click", () => {
+    goHome();
+    openAdventure();
+  });
+  document.getElementById("btnVictoryMenu")?.addEventListener("click", () => goHome());
 }
 
 function openShop() {
@@ -320,8 +504,8 @@ function openShop() {
   shopList.querySelectorAll("[data-buy]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.buy;
-      const res = buyUpgrade(id);
-      if (res.ok) openShop();
+      buyUpgrade(id);
+      openShop();
       refreshYs();
     });
   });
@@ -329,20 +513,63 @@ function openShop() {
   showScreen("shop");
 }
 
-function openScores() {
-  const scores = getState().scores;
+function renderScoresTab() {
   scoresList.innerHTML = "";
-  if (!scores.length) {
-    scoresList.innerHTML = `<p class="muted">${t("scores.empty")}</p>`;
-  } else {
-    scores.forEach((row, i) => {
-      const el = document.createElement("div");
-      el.className = "score-row";
-      el.innerHTML = `<span>#${i + 1}</span><strong>${row.score}</strong><span>${new Date(row.at).toLocaleDateString()}</span>`;
-      scoresList.appendChild(el);
-    });
+  document.querySelectorAll(".scores-tab").forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.scoresTab === scoresTab);
+  });
+
+  if (scoresTab === "fullskill") {
+    scoresList.innerHTML = `<p class="muted scores-soon">${t("scores.soon")}</p>`;
+    return;
   }
+
+  let hasAny = false;
+  STAGES.forEach((stage) => {
+    const record = getStageRecord(stage.id);
+    const row = document.createElement("div");
+    row.className = "score-stage-row";
+    const bossStatus = record?.bossDefeated ? t("scores.bossDefeated") : t("scores.bossPending");
+    const runType =
+      record?.bossDefeated && record?.assisted
+        ? t("scores.assisted")
+        : record?.bossDefeated
+          ? t("scores.clean")
+          : "—";
+    row.innerHTML = `
+      <div class="score-stage-head">
+        <strong>${stage.id}. ${stageName(stage)}</strong>
+        <span class="muted">${bossName(stage.bossId)}</span>
+      </div>
+      <div class="score-stage-stats">
+        <span>${t("adventure.bestScore")}: <strong>${record?.bestScore ?? "—"}</strong></span>
+        <span>${t("adventure.bestTime")}: <strong>${record?.bestTimeMs && record.bossDefeated ? formatDurationMs(record.bestTimeMs) : "—"}</strong></span>
+        <span>${bossStatus}</span>
+        <span>${runType}</span>
+      </div>
+    `;
+    scoresList.appendChild(row);
+    if (record?.bestScore) hasAny = true;
+  });
+
+  if (!hasAny) {
+    scoresList.innerHTML = `<p class="muted">${t("scores.empty")}</p>`;
+  }
+}
+
+function openScores() {
+  scoresTab = "adventure";
+  renderScoresTab();
   showScreen("scores");
+}
+
+function bindScoresTabs() {
+  document.querySelectorAll(".scores-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      scoresTab = tab.dataset.scoresTab || "adventure";
+      renderScoresTab();
+    });
+  });
 }
 
 function openSettings() {
@@ -369,13 +596,12 @@ function bindSettings() {
     setLocale(e.target.value);
     applyI18n();
     updateRunHint();
+    if (!screens.adventure.hidden) renderAdventureMap();
   });
 }
 
 function bindResize() {
-  window.addEventListener("resize", () => {
-    game?._resize?.();
-  });
+  window.addEventListener("resize", () => game?._resize?.());
   window.addEventListener("orientationchange", () => {
     setTimeout(() => game?._resize?.(), 150);
   });
@@ -387,6 +613,7 @@ async function boot() {
   bindNav();
   bindRunControls();
   bindGameOver();
+  bindScoresTabs();
   bindSettings();
   bindResize();
   refreshYs();
@@ -399,6 +626,10 @@ async function boot() {
       pauseRun(true);
     },
     onBack: () => {
+      if (!stagePanel?.hidden) {
+        closeStagePanel();
+        return true;
+      }
       if (screens.run.hidden) return false;
       if (game?.levelUpPending) return true;
       if (game?.paused) {

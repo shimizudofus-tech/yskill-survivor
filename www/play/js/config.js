@@ -1,5 +1,5 @@
 /** YSkill Survivor — shared constants */
-export const STORAGE_KEY = "yskill-survivor:v1";
+export const STORAGE_KEY = "yskill-survivor:v2";
 /** Logical arena — portrait 9:16 (mobile-first). */
 export const ARENA_W = 360;
 export const ARENA_H = 640;

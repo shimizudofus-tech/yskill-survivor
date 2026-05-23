@@ -3,18 +3,17 @@ import {
   ARENA_H,
   PLAYER_R,
   BASE_FIRE_MS,
-  BOSS_AT_MS,
-  BOSS_WARN_MS,
   BOSS_BONUS,
   ENEMY_TYPES,
   PALETTE,
   RUN_UPGRADE_POOL,
   LEVEL_UP_INTERVAL_MS,
 } from "./config.js";
+import { getBossDefinition } from "./stages.js";
 import { Sfx } from "./audio.js";
 
-function difficultyAt(seconds) {
-  return 1 + Math.floor(Math.max(0, seconds) / 10) * 0.25;
+function difficultyAt(seconds, mult = 1) {
+  return (1 + Math.floor(Math.max(0, seconds) / 10) * 0.25) * mult;
 }
 
 function mulberry32(seed) {
@@ -51,12 +50,19 @@ export class YSkillSurvivorGame {
     this.sfx = options.sfx instanceof Sfx ? options.sfx : new Sfx(options.sound !== false);
     this.onState = options.onState || (() => {});
     this.onGameOver = options.onGameOver || (() => {});
+    this.onVictory = options.onVictory || (() => {});
     this.tBoss = options.tBoss || (() => "BOSS");
     this.getMoveVector = options.getMoveVector || null;
     this.useCanvasTouch = options.useCanvasTouch !== false;
     this.onImpact = options.onImpact || null;
     this.onLevelUp = options.onLevelUp || null;
     this.metaEffects = options.effects || {};
+    this.runConfig = options.runConfig || { mode: "adventure" };
+    this.stageConfig = this.runConfig.stageConfig || null;
+    this.difficultyMult = this.stageConfig?.difficultyMultiplier ?? 1;
+    this.bossAtMs = this.stageConfig?.durationBeforeBossMs ?? 5 * 60 * 1000;
+    this.bossWarnMs = Math.max(0, this.bossAtMs - 2000);
+    this.allowRevive = this.runConfig.allowRevive !== false;
     this.combatEffects = { ...this.metaEffects };
     this.runLevels = {};
     this.levelUpPending = false;
@@ -81,6 +87,8 @@ export class YSkillSurvivorGame {
     this._lastEliteDecade = -1;
     this._bossSpawned = false;
     this._bossWarning = null;
+    this._stageBossId = this.stageConfig?.bossId ?? null;
+    this._stageCleared = false;
     this.invulnMs = 0;
     this.shakeMs = 0;
 
@@ -177,9 +185,7 @@ export class YSkillSurvivorGame {
 
   _recomputeCombatEffects() {
     const m = this.metaEffects;
-    const r = this.runLevels;
-    const multishotHits =
-      (m.multishotHits || 1) + this._runLevel("runPierce");
+    const multishotHits = (m.multishotHits || 1) + this._runLevel("runPierce");
     this.combatEffects = {
       fireRateMult: (m.fireRateMult || 1) * Math.pow(1.18, this._runLevel("runFire")),
       bulletDamage: (m.bulletDamage || 1) + this._runLevel("runDamage"),
@@ -200,9 +206,7 @@ export class YSkillSurvivorGame {
   }
 
   _rollLevelUpChoices() {
-    const available = RUN_UPGRADE_POOL.filter(
-      (u) => this._runLevel(u.id) < u.max,
-    );
+    const available = RUN_UPGRADE_POOL.filter((u) => this._runLevel(u.id) < u.max);
     if (!available.length) return [];
     const pool = [...available];
     const picks = [];
@@ -285,6 +289,7 @@ export class YSkillSurvivorGame {
     this._lastEliteDecade = -1;
     this._bossSpawned = false;
     this._bossWarning = null;
+    this._stageCleared = false;
     this.invulnMs = 800;
     this.shakeMs = 0;
     this.player.x = ARENA_W / 2;
@@ -295,7 +300,7 @@ export class YSkillSurvivorGame {
   }
 
   revive() {
-    if (this.revived || this.running) return false;
+    if (!this.allowRevive || this.revived || this.running) return false;
     this.revived = true;
     this.hp = 1;
     this.invulnMs = 1500;
@@ -351,20 +356,23 @@ export class YSkillSurvivorGame {
       maxHp: this.maxHp,
       runLevel: this._totalRunPicks(),
       score: this.score(),
-      difficulty: difficultyAt(this.elapsedMs / 1000),
+      difficulty: difficultyAt(this.elapsedMs / 1000, this.difficultyMult),
       levelUpPending: this.levelUpPending,
+      stageName: this.stageConfig?.name,
     });
     requestAnimationFrame((t) => this._loop(t));
   }
 
   _update(dt) {
+    if (this._stageCleared) return;
+
     if (this.elapsedMs >= this._nextLevelUpMs) {
       this._triggerLevelUp();
       return;
     }
 
     const sec = this.elapsedMs / 1000;
-    const diff = difficultyAt(sec);
+    const diff = difficultyAt(sec, this.difficultyMult);
     const eff = this.combatEffects;
 
     const stick = this.getMoveVector?.();
@@ -384,26 +392,28 @@ export class YSkillSurvivorGame {
     this.player.x = clamp(this.player.x + (this.player.vx * dt) / 1000, PLAYER_R, ARENA_W - PLAYER_R);
     this.player.y = clamp(this.player.y + (this.player.vy * dt) / 1000, PLAYER_R, ARENA_H - PLAYER_R);
 
-    this.spawnTimer -= dt;
-    const spawnEvery = Math.max(220, 1100 / diff);
-    const maxEnemies = Math.min(50, Math.floor(14 + diff * 10));
-    if (this.spawnTimer <= 0 && this.enemies.length < maxEnemies) {
-      this.spawnTimer = spawnEvery;
-      this._spawnEnemy(diff);
+    if (!this._bossSpawned) {
+      this.spawnTimer -= dt;
+      const spawnEvery = Math.max(220, 1100 / diff);
+      const maxEnemies = Math.min(50, Math.floor(14 + diff * 10));
+      if (this.spawnTimer <= 0 && this.enemies.length < maxEnemies) {
+        this.spawnTimer = spawnEvery;
+        this._spawnEnemy(diff);
+      }
+
+      const decade = Math.floor(sec / 10);
+      if (decade >= 1 && decade !== this._lastEliteDecade) {
+        this._lastEliteDecade = decade;
+        this._spawnElite(decade, diff);
+      }
     }
 
-    const decade = Math.floor(sec / 10);
-    if (decade >= 1 && decade !== this._lastEliteDecade) {
-      this._lastEliteDecade = decade;
-      this._spawnElite(decade, diff);
-    }
-
-    if (this.elapsedMs >= BOSS_WARN_MS && !this._bossSpawned && !this._bossWarning) {
+    if (this.elapsedMs >= this.bossWarnMs && !this._bossSpawned && !this._bossWarning) {
       this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
     }
     if (this._bossWarning && !this._bossSpawned) {
       if (this.elapsedMs - this._bossWarning.startedAt >= this._bossWarning.duration) {
-        this._spawnBoss();
+        this._spawnStageBoss();
         this._bossSpawned = true;
         this._bossWarning = null;
         this.sfx.boss();
@@ -437,12 +447,9 @@ export class YSkillSurvivorGame {
       }
     }
 
-    const enemySpeed = 42 + diff * 26;
+    const enemySpeed = (42 + diff * 26) * this.difficultyMult;
     for (const e of this.enemies) {
-      const d = dist(e.x, e.y, this.player.x, this.player.y) || 1;
-      const mul = e.kind === "elite" ? 0.78 : e.kind === "boss" ? 0.55 : e.speedMul || 1;
-      e.x += ((this.player.x - e.x) / d) * ((enemySpeed * mul * dt) / 1000);
-      e.y += ((this.player.y - e.y) / d) * ((enemySpeed * mul * dt) / 1000);
+      this._updateBossBehavior(e, dt, enemySpeed);
     }
 
     for (const b of this.bullets) {
@@ -463,11 +470,18 @@ export class YSkillSurvivorGame {
           b.hitCount += 1;
           this._burst(e.x, e.y, e.color, 4);
           if (e.hp <= 0) {
-            if (e.kind === "boss") this.bossBonusScore += BOSS_BONUS;
+            const wasStageBoss = e.kind === "boss" && e.bossId === this._stageBossId;
+            if (e.kind === "boss") {
+              this.bossBonusScore += e.bonusScore ?? BOSS_BONUS;
+            }
             this.enemies.splice(i, 1);
             this.kills += 1;
             this.sfx.kill();
             this.onImpact?.("light");
+            if (wasStageBoss) {
+              this._victory();
+              return;
+            }
           }
           if (b.hitCount >= maxHits) {
             b.life = 0;
@@ -506,6 +520,62 @@ export class YSkillSurvivorGame {
     this.particles = this.particles.filter((p) => p.life > 0);
   }
 
+  _updateBossBehavior(e, dt, baseSpeed) {
+    const d = dist(e.x, e.y, this.player.x, this.player.y) || 1;
+    const dx = (this.player.x - e.x) / d;
+    const dy = (this.player.y - e.y) / d;
+    let mul = e.kind === "elite" ? 0.78 : e.kind === "boss" ? e.speedMul || 0.55 : e.speedMul || 1;
+
+    if (e.kind === "boss" && e.behavior) {
+      e.behaviorTimer = (e.behaviorTimer || 0) + dt;
+
+      if (e.behavior === "slime" && e.regenPerSec) {
+        e.hp = Math.min(e.maxHp, e.hp + (e.regenPerSec * dt) / 1000);
+      }
+
+      if (e.behavior === "dash") {
+        const interval = e.dashIntervalMs || 3200;
+        if (!e.dashing && e.behaviorTimer >= interval) {
+          e.dashing = true;
+          e.dashLeftMs = 450;
+          e.behaviorTimer = 0;
+        }
+        if (e.dashing) {
+          mul *= e.dashSpeedMul || 2.5;
+          e.dashLeftMs -= dt;
+          if (e.dashLeftMs <= 0) e.dashing = false;
+        }
+      }
+
+      if (e.behavior === "hop") {
+        const interval = e.hopIntervalMs || 2800;
+        if (!e.hopping && e.behaviorTimer >= interval) {
+          e.hopping = true;
+          e.hopLeftMs = 380;
+          e.behaviorTimer = 0;
+        }
+        if (e.hopping) {
+          mul *= e.hopSpeedMul || 3;
+          e.hopLeftMs -= dt;
+          if (e.hopLeftMs <= 0) e.hopping = false;
+        } else {
+          mul *= 0.25;
+        }
+      }
+
+      if (e.behavior === "guardian") {
+        const interval = e.minionIntervalMs || 8000;
+        if (e.behaviorTimer >= interval) {
+          e.behaviorTimer = 0;
+          this._spawnMinion(e.x, e.y);
+        }
+      }
+    }
+
+    e.x += dx * ((baseSpeed * mul * dt) / 1000);
+    e.y += dy * ((baseSpeed * mul * dt) / 1000);
+  }
+
   _spawnEnemy(diff) {
     const edge = Math.floor(this.rand() * 4);
     let x = 0;
@@ -524,20 +594,38 @@ export class YSkillSurvivorGame {
       y = this.rand() * ARENA_H;
     }
     const type = ENEMY_TYPES[Math.floor(this.rand() * ENEMY_TYPES.length)];
+    const hpScale = Math.max(1, Math.floor(type.hp * this.difficultyMult));
     this.enemies.push({
       ...type,
       x,
       y,
       kind: "normal",
       color: PALETTE[Math.floor(this.rand() * PALETTE.length)],
-      hp: type.hp,
-      maxHp: type.hp,
+      hp: hpScale,
+      maxHp: hpScale,
+    });
+  }
+
+  _spawnMinion(bx, by) {
+    const angle = this.rand() * Math.PI * 2;
+    this.enemies.push({
+      id: "minion",
+      shape: "circle",
+      x: bx + Math.cos(angle) * 20,
+      y: by + Math.sin(angle) * 20,
+      r: 10,
+      kind: "normal",
+      color: "#86efac",
+      hp: 2,
+      maxHp: 2,
+      speedMul: 1.1,
     });
   }
 
   _spawnElite(decade, diff) {
     const x = this.rand() < 0.5 ? 30 : ARENA_W - 30;
     const y = this.rand() < 0.5 ? 30 : ARENA_H - 30;
+    const hp = Math.floor((4 + decade) * this.difficultyMult);
     this.enemies.push({
       id: "elite",
       shape: "star",
@@ -546,24 +634,25 @@ export class YSkillSurvivorGame {
       r: 18 + decade,
       kind: "elite",
       color: "#ff6eb4",
-      hp: 4 + decade,
-      maxHp: 4 + decade,
+      hp,
+      maxHp: hp,
       speedMul: 0.78,
     });
   }
 
-  _spawnBoss() {
+  _spawnStageBoss() {
+    const def = getBossDefinition(this._stageBossId);
+    if (!def) return;
+    const hp = Math.floor(def.hp * this.difficultyMult);
     this.enemies.push({
-      id: "boss",
-      shape: "star",
+      ...def,
       x: ARENA_W / 2,
       y: -40,
-      r: 28,
       kind: "boss",
-      color: "#a855f7",
-      hp: 80,
-      maxHp: 80,
-      speedMul: 0.55,
+      bossId: def.id,
+      hp,
+      maxHp: hp,
+      behaviorTimer: 0,
     });
   }
 
@@ -623,7 +712,23 @@ export class YSkillSurvivorGame {
       score: this.score(),
       elapsedMs: this.elapsedMs,
       kills: this.kills,
-      canRevive: !this.revived,
+      canRevive: this.allowRevive && !this.revived,
+      revived: this.revived,
+    });
+  }
+
+  _victory() {
+    this._stageCleared = true;
+    this.running = false;
+    this.sfx.boss();
+    this.onVictory({
+      score: this.score(),
+      elapsedMs: this.elapsedMs,
+      kills: this.kills,
+      revived: this.revived,
+      bossName: this.stageConfig?.bossName,
+      stageName: this.stageConfig?.name,
+      stageId: this.stageConfig?.id,
     });
   }
 
@@ -726,7 +831,7 @@ export class YSkillSurvivorGame {
         const ratio = e.hp / e.maxHp;
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillRect(-e.r, -e.r - 8, w, 4);
-        ctx.fillStyle = "#3ecf8e";
+        ctx.fillStyle = e.kind === "boss" ? "#fbbf24" : "#3ecf8e";
         ctx.fillRect(-e.r, -e.r - 8, w * ratio, 4);
       }
       ctx.restore();
@@ -756,10 +861,13 @@ export class YSkillSurvivorGame {
 
     if (this._bossWarning) {
       const t = (this.elapsedMs - this._bossWarning.startedAt) / this._bossWarning.duration;
+      const bossLabel = this.stageConfig?.bossName || this.tBoss();
       ctx.fillStyle = `rgba(168, 85, 247, ${0.35 + 0.35 * Math.sin(t * 20)})`;
-      ctx.font = "bold 28px system-ui,sans-serif";
+      ctx.font = "bold 22px system-ui,sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(this.tBoss(), ARENA_W / 2, ARENA_H / 2);
+      ctx.fillText(bossLabel, ARENA_W / 2, ARENA_H / 2 - 12);
+      ctx.font = "bold 16px system-ui,sans-serif";
+      ctx.fillText(this.tBoss(), ARENA_W / 2, ARENA_H / 2 + 16);
     }
 
     if (this.levelUpPending) {

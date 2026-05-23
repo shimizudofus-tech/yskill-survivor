@@ -29,16 +29,45 @@
     <main>
       <section id="screenHome" class="screen">
         <div class="hero-card">
-          <p class="hero-tag">v0.3 · 9:16 mobile</p>
+          <p class="hero-tag">v0.4 · Aventure · 9:16</p>
           <h1 data-i18n="app.title">YSkill Survivor</h1>
           <p data-i18n="app.tagline">Survis. Score. Améliore.</p>
         </div>
         <nav class="menu-grid">
-          <button type="button" class="btn btn-primary btn-lg" data-nav="play" data-i18n="nav.play">Jouer</button>
+          <button type="button" class="btn btn-primary btn-mode" data-nav="adventure">
+            <strong data-i18n="nav.adventure">Aventure</strong>
+            <span data-i18n="nav.adventureSub">Progresse. Améliore-toi. Terrasse les boss.</span>
+          </button>
+          <button type="button" class="btn btn-mode btn-disabled" data-nav="fullskill" disabled>
+            <strong data-i18n="nav.fullSkill">Full Skill</strong>
+            <span data-i18n="nav.fullSkillSoon">Bientôt disponible</span>
+          </button>
           <button type="button" class="btn" data-nav="shop" data-i18n="nav.shop">Shop YS</button>
-          <button type="button" class="btn" data-nav="scores" data-i18n="nav.scores">Scores</button>
+          <button type="button" class="btn" data-nav="scores" data-i18n="nav.scores">Classements</button>
           <button type="button" class="btn" data-nav="settings" data-i18n="nav.settings">Réglages</button>
         </nav>
+      </section>
+
+      <section id="screenAdventure" class="screen" hidden>
+        <div class="panel panel-adventure">
+          <h2 data-i18n="adventure.title">Carte Aventure</h2>
+          <div id="adventurePath" class="adventure-path"></div>
+          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
+        </div>
+        <div id="stagePanel" class="overlay overlay-stage" hidden>
+          <div class="panel stage-detail">
+            <h2 id="stagePanelName">Stage</h2>
+            <p class="stat-line"><span data-i18n="adventure.boss">Boss</span>: <strong id="stagePanelBoss">—</strong></p>
+            <p class="stat-line"><span data-i18n="adventure.bestScore">Meilleur score</span>: <strong id="stagePanelScore">—</strong></p>
+            <p class="stat-line"><span data-i18n="adventure.bestTime">Meilleur temps</span>: <strong id="stagePanelTime">—</strong></p>
+            <p class="stat-line"><span data-i18n="adventure.rewardFirst">Première victoire</span>: <strong id="stagePanelRewardFirst">—</strong> YS</p>
+            <p class="stat-line"><span data-i18n="adventure.rewardReplay">Replay</span>: <strong id="stagePanelRewardReplay">—</strong> YS</p>
+            <div class="btn-stack">
+              <button type="button" class="btn btn-primary btn-lg" id="btnStageLaunch" data-i18n="btn.launch">Lancer</button>
+              <button type="button" class="btn" id="btnStageClose" data-i18n="btn.close">Fermer</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="screenRun" class="screen screen-run" hidden>
@@ -76,15 +105,33 @@
 
       <section id="screenGameOver" class="screen" hidden>
         <div class="panel">
-          <h2 data-i18n="go.title">Run terminée</h2>
+          <h2 data-i18n="go.defeat">Défaite</h2>
+          <p class="stat-line" id="goStageLine"><span data-i18n="victory.stage">Stage</span>: <strong id="goStageName">—</strong></p>
           <p class="stat-line"><span data-i18n="hud.score">Score</span>: <strong id="goScore">0</strong></p>
           <p class="stat-line"><span data-i18n="go.ysEarned">YS gagnés</span>: <strong id="goYs">0</strong></p>
-          <p class="stat-line"><span data-i18n="go.best">Record</span>: <strong id="goBest">0</strong></p>
           <div class="btn-stack">
             <button type="button" class="btn btn-primary" id="btnRetry" data-i18n="btn.retry">Rejouer</button>
             <button type="button" class="btn btn-accent" id="btnRevive" data-i18n="go.reviveAd">Pub → Revive</button>
-            <button type="button" class="btn" id="btnDoubleYs" data-i18n="go.doubleAd">Pub → Double YS</button>
+            <button type="button" class="btn" id="btnGoAdventure" data-i18n="btn.adventureMap">Carte Aventure</button>
             <button type="button" class="btn" id="btnGoMenu" data-i18n="btn.menu">Menu</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="screenVictory" class="screen" hidden>
+        <div class="panel panel-victory">
+          <h2 data-i18n="victory.title">Victoire !</h2>
+          <p class="stat-line"><span data-i18n="victory.stage">Stage</span>: <strong id="vicStageName">—</strong></p>
+          <p class="stat-line"><span data-i18n="victory.boss">Boss vaincu</span>: <strong id="vicBossName">—</strong></p>
+          <p class="stat-line"><span data-i18n="hud.score">Score</span>: <strong id="vicScore">0</strong></p>
+          <p class="stat-line"><span data-i18n="hud.time">Temps</span>: <strong id="vicTime">0:00</strong></p>
+          <p class="stat-line"><span data-i18n="go.ysEarned">YS gagnés</span>: <strong id="vicYs">0</strong></p>
+          <p class="muted" id="vicRewardLabel"></p>
+          <div class="btn-stack">
+            <button type="button" class="btn btn-primary" id="btnNextStage" data-i18n="btn.nextStage" hidden>Stage suivant</button>
+            <button type="button" class="btn" id="btnVictoryRetry" data-i18n="btn.retry">Rejouer</button>
+            <button type="button" class="btn" id="btnVictoryMap" data-i18n="btn.adventureMap">Carte Aventure</button>
+            <button type="button" class="btn" id="btnVictoryMenu" data-i18n="btn.menu">Menu</button>
           </div>
         </div>
       </section>
@@ -100,7 +147,11 @@
 
       <section id="screenScores" class="screen" hidden>
         <div class="panel">
-          <h2 data-i18n="scores.title">Meilleurs scores</h2>
+          <h2 data-i18n="scores.title">Classements</h2>
+          <div class="scores-tabs" role="tablist">
+            <button type="button" class="btn btn-sm scores-tab is-active" data-scores-tab="adventure" data-i18n="scores.tabAdventure">Aventure</button>
+            <button type="button" class="btn btn-sm scores-tab" data-scores-tab="fullskill" data-i18n="scores.tabFullSkill">Full Skill</button>
+          </div>
           <div id="scoresList" class="scores-list"></div>
           <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
         </div>

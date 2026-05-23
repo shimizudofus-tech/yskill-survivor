@@ -1,6 +1,6 @@
 {
   "name": "yskill-survivor",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "YSkill Survivor — arcade survivor mobile (web + Android)",
   "scripts": {

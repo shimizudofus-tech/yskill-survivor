@@ -1,3 +1,5 @@
+import { ACTIVE_HERO_CONFIG } from "./hero-config.js";
+
 /** YSkill Survivor — shared constants */
 export const STORAGE_KEY = "yskill-survivor:v2";
 /** Logical arena — portrait 9:16 (mobile-first). Viewport = visible canvas. */
@@ -8,7 +10,21 @@ export const ARENA_W = VIEWPORT_W;
 /** @deprecated use VIEWPORT_H */
 export const ARENA_H = VIEWPORT_H;
 export const ARENA_RATIO = "9 / 16";
-export const PLAYER_R = 14;
+
+/** Hitbox joueur — alignée sur le héros actif. */
+export const PLAYER_R = ACTIVE_HERO_CONFIG.collisionRadius;
+
+/** Art direction — manga fantasy arcade (Dofus × survivor mobile). Priority: readability > perf > mood > FX. */
+export const VISUAL_STYLE = {
+  cameraTiltDeg: "75-80",
+  playerScreenRatio: 0.04,
+  bossVsPlayerMin: 2.5,
+  enemyVsPlayerRange: [0.55, 1.1],
+  mapDecor: "borders-only",
+  combatCenter: "clear",
+};
+
+export { ACTIVE_HERO_CONFIG, HERO_MALE_CONFIG } from "./hero-config.js";
 export const BASE_FIRE_MS = 420;
 export const BOSS_AT_MS = 5 * 60 * 1000;
 export const BOSS_WARN_MS = BOSS_AT_MS - 2000;

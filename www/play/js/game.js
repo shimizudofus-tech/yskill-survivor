@@ -18,12 +18,11 @@ import {
   isWalkable,
   randomWalkablePoint,
   randomSpawnNearPlayer,
-  playerInsideBossArena,
-  playerNearBossPortal,
+  playerNearBossArena,
   canUnlockBoss,
-  clampToBossArena,
 } from "./adventure-world.js";
 import { getBossDefinition } from "./stages.js";
+import { HeroSprite } from "./hero-sprite.js";
 import { Sfx } from "./audio.js";
 
 function difficultyAt(seconds, mult = 1) {
@@ -138,6 +137,8 @@ export class YSkillSurvivorGame {
     this.pickups = [];
     this.particles = [];
     this.keys = new Set();
+    this.heroSprite = new HeroSprite();
+    void this.heroSprite.load().catch(() => {});
 
     this._bindInput();
     this._resize();
@@ -460,10 +461,7 @@ export class YSkillSurvivorGame {
     const ny = oy + (this.player.vy * dt) / 1000;
 
     if (this.worldConfig) {
-      const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R, {
-        lockBossArena: this._bossFightLocked,
-        bossArenaUnlocked: this._bossArenaUnlocked || this._bossFightLocked,
-      });
+      const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R);
       this.player.x = p.x;
       this.player.y = p.y;
       this.camera?.follow(this.player.x, this.player.y);
@@ -501,13 +499,6 @@ export class YSkillSurvivorGame {
         this._spawnStageBoss();
         this._bossSpawned = true;
         this._bossFightLocked = Boolean(this.worldConfig);
-        if (this.worldConfig?.bossArena) {
-          const ba = this.worldConfig.bossArena;
-          const c = clampToBossArena(this.worldConfig, ba.x, ba.y + 40, PLAYER_R);
-          this.player.x = c.x;
-          this.player.y = c.y;
-          this.camera?.follow(this.player.x, this.player.y, true);
-        }
         this._bossWarning = null;
         this.sfx.boss();
         this.onImpact?.("heavy");
@@ -677,11 +668,7 @@ export class YSkillSurvivorGame {
     e.y += dy * ((baseSpeed * mul * dt) / 1000);
 
     if (this.worldConfig) {
-      if (this._bossFightLocked) {
-        const c = clampToBossArena(this.worldConfig, e.x, e.y, e.r);
-        e.x = c.x;
-        e.y = c.y;
-      } else if (!isWalkable(this.worldConfig, e.x, e.y, e.r * 0.45)) {
+      if (!isWalkable(this.worldConfig, e.x, e.y, e.r * 0.45)) {
         e.x -= dx * ((baseSpeed * mul * dt) / 1000);
         e.y -= dy * ((baseSpeed * mul * dt) / 1000);
       }
@@ -699,7 +686,7 @@ export class YSkillSurvivorGame {
     if (
       this._bossArenaUnlocked &&
       !this._bossWarning &&
-      playerInsideBossArena(this.worldConfig, this.player.x, this.player.y, PLAYER_R)
+      !this._bossSpawned
     ) {
       this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
     }
@@ -708,23 +695,15 @@ export class YSkillSurvivorGame {
   _spawnEnemyWorld(diff) {
     const minDist = Math.max(this.viewW, this.viewH) * 0.52;
     const maxDist = minDist + 140;
-    let pos;
-    if (this._bossFightLocked && this.worldConfig.bossArena) {
-      const ba = this.worldConfig.bossArena;
-      const angle = this.rand() * Math.PI * 2;
-      const d = ba.radius * (0.35 + this.rand() * 0.55);
-      pos = { x: ba.x + Math.cos(angle) * d, y: ba.y + Math.sin(angle) * d };
-    } else {
-      pos = randomSpawnNearPlayer(
-        this.worldConfig,
-        this.player.x,
-        this.player.y,
-        this.rand,
-        minDist,
-        maxDist,
-        12,
-      );
-    }
+    const pos = randomSpawnNearPlayer(
+      this.worldConfig,
+      this.player.x,
+      this.player.y,
+      this.rand,
+      minDist,
+      maxDist,
+      12,
+    );
     const type = ENEMY_TYPES[Math.floor(this.rand() * ENEMY_TYPES.length)];
     const hpScale = Math.max(1, Math.floor(type.hp * this.difficultyMult));
     this.enemies.push({
@@ -1029,64 +1008,10 @@ export class YSkillSurvivorGame {
     }
   }
 
-  _drawBossPortalBarrier(ctx) {
-    if (this._bossArenaUnlocked || !this.worldConfig?.bossPortalBarrier) return;
-    const b = this.worldConfig.bossPortalBarrier;
-    const cx = (b.xMin + b.xMax) / 2;
-    const w = b.xMax - b.xMin;
-    const h = 22;
-    const pulse = 0.55 + 0.25 * Math.sin(this.elapsedMs / 280);
-
-    ctx.save();
-    ctx.translate(cx, b.y);
-
-    const grd = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-    grd.addColorStop(0, `rgba(94, 234, 212, ${0.15 + pulse * 0.2})`);
-    grd.addColorStop(0.5, `rgba(168, 85, 247, ${0.35 + pulse * 0.25})`);
-    grd.addColorStop(1, `rgba(94, 234, 212, ${0.15 + pulse * 0.2})`);
-    ctx.fillStyle = grd;
-    ctx.fillRect(-w / 2, -h / 2, w, h);
-
-    ctx.strokeStyle = `rgba(94, 234, 212, ${0.5 + pulse * 0.3})`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-w / 2, -h / 2, w, h);
-
-    ctx.strokeStyle = `rgba(168, 85, 247, ${0.45 + pulse * 0.2})`;
-    ctx.lineWidth = 1.5;
-    const runeCount = 7;
-    for (let i = 0; i < runeCount; i++) {
-      const rx = -w / 2 + ((i + 0.5) / runeCount) * w;
-      ctx.beginPath();
-      ctx.moveTo(rx, -h / 2 + 3);
-      ctx.lineTo(rx + 4, 0);
-      ctx.lineTo(rx, h / 2 - 3);
-      ctx.lineTo(rx - 4, 0);
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    if (playerNearBossPortal(this.worldConfig, this.player.x, this.player.y)) {
-      ctx.font = "600 11px system-ui,sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
-      ctx.lineWidth = 3;
-      const label = this.tPortalSealed();
-      ctx.strokeText(label, 0, -h / 2 - 10);
-      ctx.fillText(label, 0, -h / 2 - 10);
-    }
-
-    ctx.restore();
-  }
-
   _drawCollisionDebug(ctx) {
     const zoneColors = {
-      spawn: "rgba(34, 197, 94, 0.28)",
-      path_lower: "rgba(59, 130, 246, 0.28)",
-      clearing: "rgba(250, 204, 21, 0.22)",
-      runes: "rgba(168, 85, 247, 0.28)",
-      path: "rgba(59, 130, 246, 0.28)",
-      approach: "rgba(168, 85, 247, 0.28)",
+      arena: "rgba(34, 197, 94, 0.22)",
+      main_clearing: "rgba(250, 204, 21, 0.22)",
     };
 
     for (const r of this.worldConfig?.walkableRects || []) {
@@ -1135,25 +1060,21 @@ export class YSkillSurvivorGame {
 
     const ba = this.worldConfig?.bossArena;
     if (ba) {
-      ctx.fillStyle = this._bossArenaUnlocked ? "rgba(94, 234, 212, 0.12)" : "rgba(239, 68, 68, 0.12)";
+      ctx.fillStyle = "rgba(94, 234, 212, 0.08)";
       ctx.beginPath();
       ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = this._bossArenaUnlocked ? "rgba(94, 234, 212, 0.7)" : "rgba(239, 68, 68, 0.7)";
+      ctx.strokeStyle = "rgba(94, 234, 212, 0.55)";
       ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
       ctx.beginPath();
       ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
       ctx.stroke();
-    }
-
-    const portal = this.worldConfig?.bossPortalBarrier;
-    if (portal && !this._bossArenaUnlocked) {
-      ctx.strokeStyle = "rgba(251, 191, 36, 0.85)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(portal.xMin, portal.y);
-      ctx.lineTo(portal.xMax, portal.y);
-      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.textAlign = "center";
+      ctx.fillText("boss trigger", ba.x, ba.y);
     }
 
     ctx.fillStyle = "rgba(232, 121, 249, 0.9)";
@@ -1205,7 +1126,6 @@ export class YSkillSurvivorGame {
       ctx.save();
       this.camera.applyTransform(ctx);
       this._drawWorldBackground(ctx);
-      this._drawBossPortalBarrier(ctx);
       this._drawEntities(ctx);
       if (this._collisionDebug) this._drawCollisionDebug(ctx);
       ctx.restore();
@@ -1229,18 +1149,21 @@ export class YSkillSurvivorGame {
     }
 
     for (const b of this.bullets) {
-      ctx.fillStyle = "#6ea8fe";
+      ctx.fillStyle = "#93c5fd";
+      ctx.strokeStyle = "#1e3a5f";
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     }
 
     for (const e of this.enemies) {
       ctx.save();
       ctx.translate(e.x, e.y);
       ctx.fillStyle = e.color;
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
-      ctx.lineWidth = e.kind === "boss" ? 2 : 1;
+      ctx.strokeStyle = e.kind === "boss" ? "#fbbf24" : "rgba(255,255,255,0.55)";
+      ctx.lineWidth = e.kind === "boss" ? 3 : 1.5;
       ctx.beginPath();
       this._drawShape(ctx, e.shape, e.r);
       if (e.shape === "ring") ctx.fill("evenodd");
@@ -1264,20 +1187,32 @@ export class YSkillSurvivorGame {
       ctx.globalAlpha = 1;
     }
 
-    if (this.invulnMs > 0 && Math.floor(this.elapsedMs / 80) % 2 === 0) {
-      ctx.globalAlpha = 0.55;
+    const heroAlpha =
+      this.invulnMs > 0 && Math.floor(this.elapsedMs / 80) % 2 === 0 ? 0.55 : 1;
+    const drawnHero = this.heroSprite.draw(
+      ctx,
+      this.player.x,
+      this.player.y,
+      this.player.vx,
+      this.player.vy,
+      this.elapsedMs,
+      { alpha: heroAlpha },
+    );
+    if (!drawnHero) {
+      ctx.save();
+      ctx.globalAlpha = heroAlpha;
+      ctx.fillStyle = "#7dd3fc";
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(this.player.x, this.player.y - PLAYER_R);
+      ctx.lineTo(this.player.x + PLAYER_R * 0.85, this.player.y + PLAYER_R * 0.7);
+      ctx.lineTo(this.player.x - PLAYER_R * 0.85, this.player.y + PLAYER_R * 0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
-    ctx.fillStyle = "#6ea8fe";
-    ctx.strokeStyle = "#a855f7";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(this.player.x, this.player.y - PLAYER_R);
-    ctx.lineTo(this.player.x + PLAYER_R * 0.85, this.player.y + PLAYER_R * 0.7);
-    ctx.lineTo(this.player.x - PLAYER_R * 0.85, this.player.y + PLAYER_R * 0.7);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.globalAlpha = 1;
   }
 
   _drawScreenOverlay(ctx) {
@@ -1320,6 +1255,17 @@ export class YSkillSurvivorGame {
       } else {
         this._bossPortalOpenBanner = null;
       }
+    }
+
+    if (
+      !this._bossArenaUnlocked &&
+      !canUnlockBoss(this.worldConfig, this.elapsedMs, this.kills) &&
+      playerNearBossArena(this.worldConfig, this.player.x, this.player.y)
+    ) {
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.font = "600 12px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(this.tPortalSealed(), this.viewW / 2, this.viewH - 28);
     }
 
     if (this._bossWarning) {

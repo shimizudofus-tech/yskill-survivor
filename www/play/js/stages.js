@@ -68,7 +68,7 @@ export const BOSS_DEFINITIONS = {
     id: "rune_slime",
     shape: "circle",
     color: "#5eead4",
-    r: 26,
+    r: 38,
     hp: 55,
     speedMul: 0.7,
     behavior: "slime",

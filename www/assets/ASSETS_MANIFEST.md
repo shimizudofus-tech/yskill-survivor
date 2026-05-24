@@ -49,21 +49,46 @@ Aucun asset listé ici n’est requis pour jouer au prototype actuel (UI CSS + f
 
 ---
 
-## Héros
+## Héros v1 — **Arin** (héros masculin · `hero_male`)
 
-### `hero/portraits/`
+> Pack officiel : **`yskill_hero_male_sprites_transparent_v7`**  
+> Chemin jeu : `www/play/assets/hero/male/` · Config : `www/play/js/hero-config.js`
 
-| Fichier | Dimensions | Utilité | État |
-|---------|------------|---------|------|
-| `hero-arin-default.png` | 256×256 | Portrait HUD, briefing, profil joueur | TODO |
-| `hero-arin-hurt.png` | 256×256 | Variante HUD vie basse (optionnel v1) | TODO |
+### Arborescence intégrée
 
-### `hero/sprites/`
+```
+hero/male/
+  full_sheet/
+  movement/frames_128/ + frames_256/
+  attacks/{front_slash,circle_slash,dash,magic_shot}/frames_128/ + frames_256/
+  previews/
+  manifest.json
+  README_CURSOR.md
+```
 
-| Fichier | Dimensions | Utilité | État |
-|---------|------------|---------|------|
-| `hero-arin-idle.png` | 64×64 ou spritesheet 256×64 | Sprite in-game (remplace triangle canvas) | TODO |
-| `hero-arin-move.png` | spritesheet | Animation déplacement (optionnel v1) | TODO |
+### Animations (noms originaux conservés)
+
+| Clé config | Fichiers |
+|------------|----------|
+| `idle` | `idle_01.png` … `idle_05.png` |
+| `walkDown` | `walk_down_01.png` … |
+| `walkSide` | `walk_side_01.png` … |
+| `walkUp` | `walk_up_01.png` … |
+| `frontSlash` | `front_slash_01.png` … |
+| `circleSlash` | `circle_slash_01.png` … |
+| `dash` | `dash_01.png` … |
+| `magicShot` | `magic_shot_01.png` … |
+
+In-game : frames **128 px** affichées à **64 px** (`visualScale: 0.5`), hitbox **18 px**.
+
+| Fichier | État |
+|---------|------|
+| `movement/frames_128/*` | INTEGRATED |
+| `attacks/*/frames_128/*` | READY (phase 2 attaques) |
+| `full_sheet/hero_sprite_sheet_transparent_128.png` | INTEGRATED |
+| `hero-arin-default.png` portrait 512 | TODO |
+
+> **Héroïne** : pack séparé plus tard · `HERO_FEMALE_CONFIG` à ajouter.
 
 ---
 

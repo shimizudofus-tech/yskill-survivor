@@ -7,9 +7,9 @@ function dist(ax, ay, bx, by) {
   return Math.hypot(ax - bx, ay - by);
 }
 
-/** Stage 1 — Clairière Runique: aligned to stage_01_gameplay_map.png (720×1280).
- *  Wide open layout: rects for paths, a big circle for the main clearing, and a
- *  circular boss arena up top. No collisions on inner decorations.
+/**
+ * Stage 1 — one open arena. Collisions = outer border only (forest edges on the map art).
+ * No internal obstacles, no portal barriers, no blocked decor.
  */
 export const STAGE_01_WORLD = {
   id: 1,
@@ -17,24 +17,14 @@ export const STAGE_01_WORLD = {
   worldHeight: 1280,
   playerSpawn: { x: 360, y: 1200 },
   bossArena: { x: 360, y: 200, radius: 210 },
-  bossPortalBarrier: { y: 410, xMin: 280, xMax: 440 },
   bossUnlock: {
     minSurvivalMs: 45_000,
     minKills: 22,
     enterRadius: 300,
   },
-  walkableRects: [
-    { x: 180, y: 1080, w: 360, h: 200, zone: "spawn" },
-    { x: 175, y: 900, w: 370, h: 210, zone: "lower_link" },
-    { x: 230, y: 380, w: 260, h: 130, zone: "boss_approach" },
-  ],
-  walkableCircles: [
-    { x: 360, y: 760, radius: 260, zone: "main_clearing" },
-  ],
-  blockedCircles: [
-    { x: 230, y: 990, radius: 58, zone: "tree_left" },
-    { x: 495, y: 985, radius: 60, zone: "tree_right" },
-  ],
+  walkableRects: [{ x: 88, y: 115, w: 544, h: 1140, zone: "arena" }],
+  walkableCircles: [],
+  blockedCircles: [],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
 };
@@ -53,12 +43,9 @@ export function defaultAdventureWorld(stageId) {
       minKills: 18 + id * 4,
       enterRadius: 280,
     },
-    walkableRects: [
-      { x: 210, y: 1000 + extra * 0.4, w: 300, h: 200 + extra * 0.2, zone: "spawn" },
-      { x: 280, y: 700 + extra * 0.2, w: 160, h: 320, zone: "path" },
-      { x: 120, y: 480, w: 480, h: 260, zone: "clearing" },
-      { x: 280, y: 320, w: 160, h: 180, zone: "approach" },
-    ],
+    walkableRects: [{ x: 100, y: 120, w: 520, h: 1100 + extra, zone: "arena" }],
+    walkableCircles: [],
+    blockedCircles: [],
     theme: "forest",
     backgroundAsset: null,
   };
@@ -90,11 +77,10 @@ export function isInsideBlockedCircle(world, x, y, margin = 0) {
   return false;
 }
 
-export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } = {}) {
+export function isWalkable(world, x, y, margin = 0) {
   if (!world) return true;
-  const { walkableRects, walkableCircles, bossArena } = world;
   if (isInsideBlockedCircle(world, x, y, margin)) return false;
-  for (const r of walkableRects || []) {
+  for (const r of world.walkableRects || []) {
     if (
       x >= r.x + margin &&
       x <= r.x + r.w - margin &&
@@ -104,35 +90,21 @@ export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } =
       return true;
     }
   }
-  for (const c of walkableCircles || []) {
+  for (const c of world.walkableCircles || []) {
     if (dist(x, y, c.x, c.y) <= c.radius - margin) return true;
   }
-  if (allowBossArena && bossArena && isInsideBossArena(world, x, y, margin)) {
-    return true;
-  }
   return false;
-}
-
-export function crossesBossPortalBarrier(world, ox, oy, nx, ny, entityR, unlocked) {
-  if (unlocked || !world?.bossPortalBarrier) return false;
-  const b = world.bossPortalBarrier;
-  const inX = (x) => x >= b.xMin - entityR && x <= b.xMax + entityR;
-  if (!inX(ox) && !inX(nx)) return false;
-  const line = b.y;
-  const wasSouth = oy >= line - entityR * 0.5;
-  const nowNorth = ny < line + entityR * 0.5;
-  return wasSouth && nowNorth;
 }
 
 export function playerInsideBossArena(world, px, py, margin = 12) {
   return isInsideBossArena(world, px, py, margin);
 }
 
-export function playerNearBossPortal(world, px, py, maxDist = 140) {
-  const b = world?.bossPortalBarrier;
-  if (!b) return false;
-  const cx = (b.xMin + b.xMax) / 2;
-  return dist(px, py, cx, b.y) <= maxDist;
+export function playerNearBossArena(world, px, py) {
+  const ba = world?.bossArena;
+  if (!ba) return false;
+  const enter = world.bossUnlock?.enterRadius ?? ba.radius + 40;
+  return dist(px, py, ba.x, ba.y) <= enter;
 }
 
 export function clampToBossArena(world, x, y, entityR) {
@@ -147,26 +119,14 @@ export function clampToBossArena(world, x, y, entityR) {
   };
 }
 
-export function constrainMove(
-  world,
-  ox,
-  oy,
-  nx,
-  ny,
-  r,
-  { lockBossArena = false, bossArenaUnlocked = false } = {},
-) {
+export function constrainMove(world, ox, oy, nx, ny, r, { lockBossArena = false } = {}) {
   if (!world) return { x: nx, y: ny };
   if (lockBossArena && world.bossArena) {
     return clampToBossArena(world, nx, ny, r);
   }
-  if (crossesBossPortalBarrier(world, ox, oy, nx, ny, r, bossArenaUnlocked)) {
-    return { x: ox, y: oy };
-  }
-  const walkOpts = { allowBossArena: bossArenaUnlocked };
-  if (isWalkable(world, nx, ny, r, walkOpts)) return { x: nx, y: ny };
-  if (isWalkable(world, nx, oy, r, walkOpts)) return { x: nx, y: oy };
-  if (isWalkable(world, ox, ny, r, walkOpts)) return { x: ox, y: ny };
+  if (isWalkable(world, nx, ny, r)) return { x: nx, y: ny };
+  if (isWalkable(world, nx, oy, r)) return { x: nx, y: oy };
+  if (isWalkable(world, ox, ny, r)) return { x: ox, y: ny };
   return { x: ox, y: oy };
 }
 
@@ -187,9 +147,9 @@ export function randomWalkablePoint(world, rand, margin = 24) {
     } else {
       const c = circles[pick - rects.length];
       const a = rand() * Math.PI * 2;
-      const r = rand() * Math.max(1, c.radius - margin);
-      x = c.x + Math.cos(a) * r;
-      y = c.y + Math.sin(a) * r;
+      const rad = rand() * Math.max(1, c.radius - margin);
+      x = c.x + Math.cos(a) * rad;
+      y = c.y + Math.sin(a) * rad;
     }
     if (isWalkable(world, x, y, margin)) return { x, y };
   }
@@ -207,13 +167,6 @@ export function randomSpawnNearPlayer(world, px, py, rand, minDist, maxDist, ent
     }
   }
   return randomWalkablePoint(world, rand, entityR);
-}
-
-export function playerNearBossArena(world, px, py) {
-  const ba = world?.bossArena;
-  if (!ba) return false;
-  const enter = world.bossUnlock?.enterRadius ?? ba.radius + 40;
-  return dist(px, py, ba.x, ba.y) <= enter;
 }
 
 export function canUnlockBoss(world, elapsedMs, kills) {

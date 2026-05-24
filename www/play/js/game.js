@@ -10,6 +10,8 @@ import {
   PALETTE,
   RUN_UPGRADE_POOL,
   LEVEL_UP_INTERVAL_MS,
+  ACTIVE_HERO_CONFIG,
+  PLAYABLE_HEROES,
 } from "./config.js";
 import {
   getAdventureWorldConfig,
@@ -23,6 +25,7 @@ import {
 } from "./adventure-world.js";
 import { getBossDefinition } from "./stages.js";
 import { HeroSprite } from "./hero-sprite.js";
+import { getSettings } from "./storage.js";
 import { Sfx } from "./audio.js";
 
 function difficultyAt(seconds, mult = 1) {
@@ -51,6 +54,20 @@ function clamp(v, min, max) {
 function isDevEnvironment() {
   const host = globalThis.location?.hostname ?? "";
   return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+}
+
+/** F2 collision overlay — localhost, Cloudflare preview, or ?debug=1 / localStorage. */
+function canToggleCollisionDebug() {
+  if (isDevEnvironment()) return true;
+  const host = globalThis.location?.hostname ?? "";
+  if (host.endsWith(".pages.dev")) return true;
+  try {
+    if (new URLSearchParams(globalThis.location?.search || "").get("debug") === "1") return true;
+    if (globalThis.localStorage?.getItem("yskill_debug") === "1") return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 function formatTime(ms) {
@@ -137,7 +154,9 @@ export class YSkillSurvivorGame {
     this.pickups = [];
     this.particles = [];
     this.keys = new Set();
-    this.heroSprite = new HeroSprite();
+    const heroId = getSettings().heroId || "hero_male";
+    const heroConfig = PLAYABLE_HEROES[heroId] || ACTIVE_HERO_CONFIG;
+    this.heroSprite = new HeroSprite(heroConfig);
     void this.heroSprite.load().catch(() => {});
 
     this._bindInput();
@@ -146,7 +165,7 @@ export class YSkillSurvivorGame {
 
   _bindInput() {
     this._onKeyDown = (e) => {
-      if (e.key === "F2" && isDevEnvironment()) {
+      if (e.key === "F2" && canToggleCollisionDebug()) {
         e.preventDefault();
         this._collisionDebug = !this._collisionDebug;
         return;
@@ -361,6 +380,7 @@ export class YSkillSurvivorGame {
     this.player.y = spawn.y;
     this.player.vx = 0;
     this.player.vy = 0;
+    this.heroSprite.reset();
     this.camera?.follow(this.player.x, this.player.y, true);
     requestAnimationFrame((t) => this._loop(t));
   }
@@ -469,6 +489,8 @@ export class YSkillSurvivorGame {
       this.player.x = clamp(nx, PLAYER_R, this.worldW - PLAYER_R);
       this.player.y = clamp(ny, PLAYER_R, this.worldH - PLAYER_R);
     }
+
+    this.heroSprite.update(dt, this.player.vx, this.player.vy);
 
     if (!this._bossSpawned && !this._bossFightLocked) {
       this.spawnTimer -= dt;
@@ -1015,7 +1037,7 @@ export class YSkillSurvivorGame {
     };
 
     for (const r of this.worldConfig?.walkableRects || []) {
-      ctx.fillStyle = zoneColors[r.zone] || "rgba(34, 197, 94, 0.25)";
+      ctx.fillStyle = zoneColors[r.zone] || "rgba(34, 197, 94, 0.38)";
       ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
       ctx.lineWidth = 1;
@@ -1027,7 +1049,7 @@ export class YSkillSurvivorGame {
     }
 
     for (const c of this.worldConfig?.walkableCircles || []) {
-      ctx.fillStyle = zoneColors[c.zone] || "rgba(34, 197, 94, 0.22)";
+      ctx.fillStyle = zoneColors[c.zone] || "rgba(34, 197, 94, 0.35)";
       ctx.beginPath();
       ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
       ctx.fill();
@@ -1043,7 +1065,7 @@ export class YSkillSurvivorGame {
     }
 
     for (const c of this.worldConfig?.blockedCircles || []) {
-      ctx.fillStyle = "rgba(239, 68, 68, 0.32)";
+      ctx.fillStyle = "rgba(239, 68, 68, 0.45)";
       ctx.beginPath();
       ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
       ctx.fill();
@@ -1187,8 +1209,7 @@ export class YSkillSurvivorGame {
       ctx.globalAlpha = 1;
     }
 
-    const heroAlpha =
-      this.invulnMs > 0 && Math.floor(this.elapsedMs / 80) % 2 === 0 ? 0.55 : 1;
+    const heroAlpha = 1;
     const drawnHero = this.heroSprite.draw(
       ctx,
       this.player.x,

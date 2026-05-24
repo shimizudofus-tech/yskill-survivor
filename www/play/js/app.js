@@ -15,7 +15,7 @@ import {
   recordAdventureVictory,
   recordAdventureDefeat,
 } from "./storage.js";
-import { UPGRADE_CATALOG } from "./config.js";
+import { UPGRADE_CATALOG, PLAYABLE_HEROES } from "./config.js";
 import { getStageById, getNextStageId, getBossDefinition } from "./stages.js";
 import { PACTS } from "./pacts.js";
 import { YSkillSurvivorGame, formatTime } from "./game.js";
@@ -113,6 +113,9 @@ const btnSignOut = document.getElementById("btnSignOut");
 const authProviders = document.getElementById("authProviders");
 const scoresStagePicker = document.getElementById("scoresStagePicker");
 const vicRankedStatus = document.getElementById("vicRankedStatus");
+const homeHeroList = document.getElementById("homeHeroList");
+
+const HERO_ORDER = ["hero_male", "hero_female"];
 
 let game = null;
 let sfx = null;
@@ -1071,7 +1074,48 @@ function openSettings() {
   document.getElementById("settingMusic").checked = s.music;
   document.getElementById("settingHaptics").checked = s.haptics !== false;
   document.getElementById("settingLang").value = s.locale || getLocale();
+  syncHeroUi();
   showScreen("settings");
+}
+
+function setHeroId(heroId) {
+  const id = PLAYABLE_HEROES[heroId] ? heroId : "hero_male";
+  patchSettings({ heroId: id });
+  syncHeroUi();
+}
+
+function syncHeroUi() {
+  const heroId = getSettings().heroId || "hero_male";
+  const settingHero = document.getElementById("settingHero");
+  if (settingHero) settingHero.value = heroId;
+  if (!homeHeroList) return;
+  homeHeroList.querySelectorAll(".hero-pick-card").forEach((btn) => {
+    const selected = btn.dataset.heroId === heroId;
+    btn.classList.toggle("is-selected", selected);
+    btn.setAttribute("aria-checked", selected ? "true" : "false");
+  });
+}
+
+function renderHomeHeroPick() {
+  if (!homeHeroList) return;
+  homeHeroList.innerHTML = "";
+  HERO_ORDER.forEach((id) => {
+    const config = PLAYABLE_HEROES[id];
+    if (!config) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "hero-pick-card";
+    btn.dataset.heroId = id;
+    btn.setAttribute("role", "radio");
+    btn.setAttribute("aria-checked", "false");
+    btn.innerHTML = `
+      <img class="hero-pick-portrait" src="${config.portrait}" alt="" width="56" height="56" decoding="async" />
+      <span class="hero-pick-name">${t(config.nameKey)}</span>
+    `;
+    btn.addEventListener("click", () => setHeroId(id));
+    homeHeroList.appendChild(btn);
+  });
+  syncHeroUi();
 }
 
 function bindSettings() {
@@ -1084,11 +1128,15 @@ function bindSettings() {
   document.getElementById("settingHaptics").addEventListener("change", (e) => {
     patchSettings({ haptics: e.target.checked });
   });
+  document.getElementById("settingHero").addEventListener("change", (e) => {
+    setHeroId(e.target.value);
+  });
   document.getElementById("settingLang").addEventListener("change", (e) => {
     patchSettings({ locale: e.target.value });
     setLocale(e.target.value);
     applyI18n();
     updateRunHint();
+    renderHomeHeroPick();
     if (!screens.adventure.hidden) renderAdventureMap();
     if (!screens.fullskill.hidden) renderPacts();
   });
@@ -1112,6 +1160,7 @@ async function boot() {
   bindSettings();
   bindResize();
   refreshYs();
+  renderHomeHeroPick();
   showScreen("home");
   void refreshAuthUser();
 

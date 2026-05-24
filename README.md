@@ -50,6 +50,8 @@ Voir `docs/ANDROID-ADS.md` pour AdMob et Play Store.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Plan 6 mois |
 | [docs/CLOUDFLARE-YSKILLSTUDIO.md](docs/CLOUDFLARE-YSKILLSTUDIO.md) | Domaine **yskillstudio.com** + Pages |
 | [docs/SURVIVOR-API.md](docs/SURVIVOR-API.md) | API online — auth optionnelle + leaderboards |
+| [docs/LEONARDO-HERO-PROMPTS.md](docs/LEONARDO-HERO-PROMPTS.md) | Prompts Gemini / Layer — spritesheets héros |
+| [www/assets/ASSETS_MANIFEST.md](www/assets/ASSETS_MANIFEST.md) | **Manifeste assets** — chemins et états INTEGRATED/TODO |
 
 ## Stack
 

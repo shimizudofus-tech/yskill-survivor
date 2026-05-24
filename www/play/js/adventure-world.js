@@ -8,8 +8,7 @@ function dist(ax, ay, bx, by) {
 }
 
 /**
- * Stage 1 — one open arena. Collisions = outer border only (forest edges on the map art).
- * No internal obstacles, no portal barriers, no blocked decor.
+ * Stage 1 — collisions prompt 3 (Gemini hand-tune after F2 + overlay).
  */
 export const STAGE_01_WORLD = {
   id: 1,
@@ -22,9 +21,44 @@ export const STAGE_01_WORLD = {
     minKills: 22,
     enterRadius: 300,
   },
-  walkableRects: [{ x: 88, y: 115, w: 544, h: 1140, zone: "arena" }],
-  walkableCircles: [],
-  blockedCircles: [],
+  walkableRects: [{ x: 300, y: 850, w: 120, h: 430, zone: "entrance_corridor" }],
+  walkableCircles: [
+    { x: 360, y: 600, radius: 350, zone: "arena_floor_center" },
+    { x: 360, y: 190, radius: 45, zone: "boss_gate_clearance" },
+  ],
+  blockedCircles: [
+    { x: 360, y: 95, radius: 24, zone: "pillar_top_center" },
+    { x: 485, y: 150, radius: 24, zone: "pillar_top_right_1" },
+    { x: 595, y: 240, radius: 24, zone: "pillar_top_right_2" },
+    { x: 235, y: 150, radius: 24, zone: "pillar_top_left_1" },
+    { x: 125, y: 240, radius: 24, zone: "pillar_top_left_2" },
+    { x: 665, y: 365, radius: 24, zone: "pillar_mid_right_1" },
+    { x: 690, y: 520, radius: 24, zone: "pillar_mid_right_2" },
+    { x: 665, y: 675, radius: 24, zone: "pillar_low_right_1" },
+    { x: 595, y: 800, radius: 24, zone: "pillar_low_right_2" },
+    { x: 55, y: 365, radius: 24, zone: "pillar_mid_left_1" },
+    { x: 30, y: 520, radius: 24, zone: "pillar_mid_left_2" },
+    { x: 55, y: 675, radius: 24, zone: "pillar_low_left_1" },
+    { x: 125, y: 800, radius: 24, zone: "pillar_low_left_2" },
+    { x: 485, y: 890, radius: 24, zone: "pillar_bottom_right_outer" },
+    { x: 452, y: 948, radius: 22, zone: "pillar_bottom_right_gate" },
+    { x: 235, y: 890, radius: 24, zone: "pillar_bottom_left_outer" },
+    { x: 268, y: 948, radius: 22, zone: "pillar_bottom_left_gate" },
+    { x: 422, y: 118, radius: 16, zone: "wall_link_ne" },
+    { x: 540, y: 190, radius: 16, zone: "wall_link_ne_2" },
+    { x: 635, y: 298, radius: 16, zone: "wall_link_e_1" },
+    { x: 682, y: 442, radius: 16, zone: "wall_link_e_2" },
+    { x: 682, y: 600, radius: 16, zone: "wall_link_e_3" },
+    { x: 635, y: 740, radius: 16, zone: "wall_link_se_1" },
+    { x: 540, y: 850, radius: 16, zone: "wall_link_se_2" },
+    { x: 268, y: 118, radius: 16, zone: "wall_link_nw" },
+    { x: 180, y: 190, radius: 16, zone: "wall_link_nw_2" },
+    { x: 85, y: 298, radius: 16, zone: "wall_link_w_1" },
+    { x: 38, y: 442, radius: 16, zone: "wall_link_w_2" },
+    { x: 38, y: 600, radius: 16, zone: "wall_link_w_3" },
+    { x: 85, y: 740, radius: 16, zone: "wall_link_sw_1" },
+    { x: 180, y: 850, radius: 16, zone: "wall_link_sw_2" },
+  ],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
 };

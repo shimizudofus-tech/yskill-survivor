@@ -77,6 +77,10 @@
           </h1>
           <p class="home-tagline" data-i18n="app.tagline">Survis. Score. Améliore.</p>
         </div>
+        <div class="home-hero-pick">
+          <p id="homeHeroPickLabel" class="section-label home-hero-pick-label" data-i18n="hero.pickLabel">Choisis ton héros</p>
+          <div id="homeHeroList" class="hero-pick-list" role="radiogroup" aria-labelledby="homeHeroPickLabel"></div>
+        </div>
         <nav class="home-menu">
           <button type="button" class="btn btn-hero btn-hero--adventure" data-nav="adventure">
             <span class="btn-hero-label" data-i18n="nav.adventure">Aventure</span>
@@ -290,6 +294,13 @@
           <label class="toggle-row">
             <span data-i18n="settings.haptics">Vibrations</span>
             <input type="checkbox" id="settingHaptics" checked />
+          </label>
+          <label class="toggle-row">
+            <span data-i18n="settings.hero">Héros</span>
+            <select id="settingHero">
+              <option value="hero_male" data-i18n="hero.arin">Arin</option>
+              <option value="hero_female" data-i18n="hero.lyra">Lyra</option>
+            </select>
           </label>
           <label class="toggle-row">
             <span data-i18n="settings.lang">Langue</span>

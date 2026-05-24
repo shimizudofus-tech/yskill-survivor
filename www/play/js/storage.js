@@ -14,7 +14,7 @@ const DEFAULT = {
   scores: [],
   adventure: structuredClone(DEFAULT_ADVENTURE),
   fullSkill: { scores: [] },
-  settings: { sound: true, music: false, locale: "fr", haptics: true },
+  settings: { sound: true, music: false, locale: "fr", haptics: true, heroId: "hero_male" },
   stats: { runs: 0, totalScore: 0 },
 };
 

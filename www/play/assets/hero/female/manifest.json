@@ -1,0 +1,285 @@
+{
+  "source": "lyra-spritesheet-layer.png",
+  "source_dimensions": [
+    1024,
+    1024
+  ],
+  "notes": [
+    "Generated via scripts/build-hero-pack.py",
+    "128x128 canvas, foot anchor, green-screen or dark bg key"
+  ],
+  "animations": {
+    "movement/idle": [
+      {
+        "frame": 1,
+        "file_128": "movement/frames_128/idle_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "movement/frames_128/idle_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "movement/frames_128/idle_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "movement/frames_128/idle_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "movement/frames_128/idle_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "movement/frames_128/idle_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "movement/frames_128/idle_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "movement/frames_128/idle_08.png"
+      }
+    ],
+    "movement/walk_down": [
+      {
+        "frame": 1,
+        "file_128": "movement/frames_128/walk_down_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "movement/frames_128/walk_down_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "movement/frames_128/walk_down_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "movement/frames_128/walk_down_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "movement/frames_128/walk_down_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "movement/frames_128/walk_down_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "movement/frames_128/walk_down_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "movement/frames_128/walk_down_08.png"
+      }
+    ],
+    "movement/walk_side": [
+      {
+        "frame": 1,
+        "file_128": "movement/frames_128/walk_side_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "movement/frames_128/walk_side_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "movement/frames_128/walk_side_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "movement/frames_128/walk_side_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "movement/frames_128/walk_side_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "movement/frames_128/walk_side_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "movement/frames_128/walk_side_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "movement/frames_128/walk_side_08.png"
+      }
+    ],
+    "movement/walk_up": [
+      {
+        "frame": 1,
+        "file_128": "movement/frames_128/walk_up_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "movement/frames_128/walk_up_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "movement/frames_128/walk_up_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "movement/frames_128/walk_up_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "movement/frames_128/walk_up_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "movement/frames_128/walk_up_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "movement/frames_128/walk_up_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "movement/frames_128/walk_up_08.png"
+      }
+    ],
+    "attacks/front_slash": [
+      {
+        "frame": 1,
+        "file_128": "attacks/front_slash/frames_128/front_slash_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "attacks/front_slash/frames_128/front_slash_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "attacks/front_slash/frames_128/front_slash_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "attacks/front_slash/frames_128/front_slash_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "attacks/front_slash/frames_128/front_slash_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "attacks/front_slash/frames_128/front_slash_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "attacks/front_slash/frames_128/front_slash_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "attacks/front_slash/frames_128/front_slash_08.png"
+      }
+    ],
+    "attacks/circle_slash": [
+      {
+        "frame": 1,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "attacks/circle_slash/frames_128/circle_slash_08.png"
+      }
+    ],
+    "attacks/dash": [
+      {
+        "frame": 1,
+        "file_128": "attacks/dash/frames_128/dash_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "attacks/dash/frames_128/dash_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "attacks/dash/frames_128/dash_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "attacks/dash/frames_128/dash_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "attacks/dash/frames_128/dash_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "attacks/dash/frames_128/dash_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "attacks/dash/frames_128/dash_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "attacks/dash/frames_128/dash_08.png"
+      }
+    ],
+    "attacks/magic_shot": [
+      {
+        "frame": 1,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_01.png"
+      },
+      {
+        "frame": 2,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_02.png"
+      },
+      {
+        "frame": 3,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_03.png"
+      },
+      {
+        "frame": 4,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_04.png"
+      },
+      {
+        "frame": 5,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_05.png"
+      },
+      {
+        "frame": 6,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_06.png"
+      },
+      {
+        "frame": 7,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_07.png"
+      },
+      {
+        "frame": 8,
+        "file_128": "attacks/magic_shot/frames_128/magic_shot_08.png"
+      }
+    ]
+  }
+}

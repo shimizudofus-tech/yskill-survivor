@@ -24,7 +24,12 @@ export const VISUAL_STYLE = {
   combatCenter: "clear",
 };
 
-export { ACTIVE_HERO_CONFIG, HERO_MALE_CONFIG } from "./hero-config.js";
+export {
+  ACTIVE_HERO_CONFIG,
+  HERO_MALE_CONFIG,
+  HERO_FEMALE_CONFIG,
+  PLAYABLE_HEROES,
+} from "./hero-config.js";
 export const BASE_FIRE_MS = 420;
 export const BOSS_AT_MS = 5 * 60 * 1000;
 export const BOSS_WARN_MS = BOSS_AT_MS - 2000;

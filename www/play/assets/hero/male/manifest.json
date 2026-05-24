@@ -1,469 +1,187 @@
 {
-  "source": "feuille_de_sprites_d_un_héros_animé.png",
+  "source": "arin-spritesheet-layer.png",
   "source_dimensions": [
-    992,
-    1586
+    640,
+    1024
   ],
   "notes": [
-    "Découpage corrigé ligne par ligne pour éviter les fragments de la rangée précédente.",
-    "Le damier gris/blanc dessiné dans la source a été retiré automatiquement.",
-    "Les fichiers frames_256 ont un canevas fixe transparent pour animation sans tremblement.",
-    "Les fichiers frames_128 sont les versions légères pour tests Android."
+    "Generated via scripts/build-hero-pack.py",
+    "128x128 canvas, foot anchor, green-screen or dark bg key"
   ],
   "animations": {
     "movement/idle": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          28,
-          198,
-          216
-        ],
-        "file_256": "movement/frames_256/idle_01.png",
         "file_128": "movement/frames_128/idle_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          28,
-          397,
-          216
-        ],
-        "file_256": "movement/frames_256/idle_02.png",
         "file_128": "movement/frames_128/idle_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          28,
-          595,
-          216
-        ],
-        "file_256": "movement/frames_256/idle_03.png",
         "file_128": "movement/frames_128/idle_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          28,
-          794,
-          216
-        ],
-        "file_256": "movement/frames_256/idle_04.png",
         "file_128": "movement/frames_128/idle_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          28,
-          992,
-          216
-        ],
-        "file_256": "movement/frames_256/idle_05.png",
         "file_128": "movement/frames_128/idle_05.png"
       }
     ],
     "movement/walk_down": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          234,
-          198,
-          414
-        ],
-        "file_256": "movement/frames_256/walk_down_01.png",
         "file_128": "movement/frames_128/walk_down_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          234,
-          397,
-          414
-        ],
-        "file_256": "movement/frames_256/walk_down_02.png",
         "file_128": "movement/frames_128/walk_down_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          234,
-          595,
-          414
-        ],
-        "file_256": "movement/frames_256/walk_down_03.png",
         "file_128": "movement/frames_128/walk_down_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          234,
-          794,
-          414
-        ],
-        "file_256": "movement/frames_256/walk_down_04.png",
         "file_128": "movement/frames_128/walk_down_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          234,
-          992,
-          414
-        ],
-        "file_256": "movement/frames_256/walk_down_05.png",
         "file_128": "movement/frames_128/walk_down_05.png"
       }
     ],
     "movement/walk_side": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          430,
-          198,
-          596
-        ],
-        "file_256": "movement/frames_256/walk_side_01.png",
         "file_128": "movement/frames_128/walk_side_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          430,
-          397,
-          596
-        ],
-        "file_256": "movement/frames_256/walk_side_02.png",
         "file_128": "movement/frames_128/walk_side_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          430,
-          595,
-          596
-        ],
-        "file_256": "movement/frames_256/walk_side_03.png",
         "file_128": "movement/frames_128/walk_side_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          430,
-          794,
-          596
-        ],
-        "file_256": "movement/frames_256/walk_side_04.png",
         "file_128": "movement/frames_128/walk_side_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          430,
-          992,
-          596
-        ],
-        "file_256": "movement/frames_256/walk_side_05.png",
         "file_128": "movement/frames_128/walk_side_05.png"
       }
     ],
     "movement/walk_up": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          618,
-          198,
-          808
-        ],
-        "file_256": "movement/frames_256/walk_up_01.png",
         "file_128": "movement/frames_128/walk_up_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          618,
-          397,
-          808
-        ],
-        "file_256": "movement/frames_256/walk_up_02.png",
         "file_128": "movement/frames_128/walk_up_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          618,
-          595,
-          808
-        ],
-        "file_256": "movement/frames_256/walk_up_03.png",
         "file_128": "movement/frames_128/walk_up_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          618,
-          794,
-          808
-        ],
-        "file_256": "movement/frames_256/walk_up_04.png",
         "file_128": "movement/frames_128/walk_up_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          618,
-          992,
-          808
-        ],
-        "file_256": "movement/frames_256/walk_up_05.png",
         "file_128": "movement/frames_128/walk_up_05.png"
       }
     ],
     "attacks/front_slash": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          812,
-          198,
-          1002
-        ],
-        "file_256": "attacks/front_slash/frames_256/front_slash_01.png",
         "file_128": "attacks/front_slash/frames_128/front_slash_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          812,
-          397,
-          1002
-        ],
-        "file_256": "attacks/front_slash/frames_256/front_slash_02.png",
         "file_128": "attacks/front_slash/frames_128/front_slash_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          812,
-          595,
-          1002
-        ],
-        "file_256": "attacks/front_slash/frames_256/front_slash_03.png",
         "file_128": "attacks/front_slash/frames_128/front_slash_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          812,
-          794,
-          1002
-        ],
-        "file_256": "attacks/front_slash/frames_256/front_slash_04.png",
         "file_128": "attacks/front_slash/frames_128/front_slash_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          812,
-          992,
-          1002
-        ],
-        "file_256": "attacks/front_slash/frames_256/front_slash_05.png",
         "file_128": "attacks/front_slash/frames_128/front_slash_05.png"
       }
     ],
     "attacks/circle_slash": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          1014,
-          198,
-          1192
-        ],
-        "file_256": "attacks/circle_slash/frames_256/circle_slash_01.png",
         "file_128": "attacks/circle_slash/frames_128/circle_slash_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          1014,
-          397,
-          1192
-        ],
-        "file_256": "attacks/circle_slash/frames_256/circle_slash_02.png",
         "file_128": "attacks/circle_slash/frames_128/circle_slash_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          1014,
-          595,
-          1192
-        ],
-        "file_256": "attacks/circle_slash/frames_256/circle_slash_03.png",
         "file_128": "attacks/circle_slash/frames_128/circle_slash_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          1014,
-          794,
-          1192
-        ],
-        "file_256": "attacks/circle_slash/frames_256/circle_slash_04.png",
         "file_128": "attacks/circle_slash/frames_128/circle_slash_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          1014,
-          992,
-          1192
-        ],
-        "file_256": "attacks/circle_slash/frames_256/circle_slash_05.png",
         "file_128": "attacks/circle_slash/frames_128/circle_slash_05.png"
       }
     ],
     "attacks/dash": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          1208,
-          198,
-          1392
-        ],
-        "file_256": "attacks/dash/frames_256/dash_01.png",
         "file_128": "attacks/dash/frames_128/dash_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          1208,
-          397,
-          1392
-        ],
-        "file_256": "attacks/dash/frames_256/dash_02.png",
         "file_128": "attacks/dash/frames_128/dash_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          1208,
-          595,
-          1392
-        ],
-        "file_256": "attacks/dash/frames_256/dash_03.png",
         "file_128": "attacks/dash/frames_128/dash_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          1208,
-          794,
-          1392
-        ],
-        "file_256": "attacks/dash/frames_256/dash_04.png",
         "file_128": "attacks/dash/frames_128/dash_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          1208,
-          992,
-          1392
-        ],
-        "file_256": "attacks/dash/frames_256/dash_05.png",
         "file_128": "attacks/dash/frames_128/dash_05.png"
       }
     ],
     "attacks/magic_shot": [
       {
         "frame": 1,
-        "source_box": [
-          0,
-          1396,
-          198,
-          1586
-        ],
-        "file_256": "attacks/magic_shot/frames_256/magic_shot_01.png",
         "file_128": "attacks/magic_shot/frames_128/magic_shot_01.png"
       },
       {
         "frame": 2,
-        "source_box": [
-          198,
-          1396,
-          397,
-          1586
-        ],
-        "file_256": "attacks/magic_shot/frames_256/magic_shot_02.png",
         "file_128": "attacks/magic_shot/frames_128/magic_shot_02.png"
       },
       {
         "frame": 3,
-        "source_box": [
-          397,
-          1396,
-          595,
-          1586
-        ],
-        "file_256": "attacks/magic_shot/frames_256/magic_shot_03.png",
         "file_128": "attacks/magic_shot/frames_128/magic_shot_03.png"
       },
       {
         "frame": 4,
-        "source_box": [
-          595,
-          1396,
-          794,
-          1586
-        ],
-        "file_256": "attacks/magic_shot/frames_256/magic_shot_04.png",
         "file_128": "attacks/magic_shot/frames_128/magic_shot_04.png"
       },
       {
         "frame": 5,
-        "source_box": [
-          794,
-          1396,
-          992,
-          1586
-        ],
-        "file_256": "attacks/magic_shot/frames_256/magic_shot_05.png",
         "file_128": "attacks/magic_shot/frames_128/magic_shot_05.png"
       }
     ]

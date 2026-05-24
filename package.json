@@ -8,6 +8,8 @@
     "api:dev": "npm run dev --prefix api",
     "api:deploy": "npm run deploy --prefix api",
     "deploy": "npx wrangler pages deploy www --project-name=yskillstudio --commit-dirty=true",
+    "build:heroes": "python scripts/build-hero-pack.py --only male --bg green --cols 5 --rows 8 --frames 5 --inset 4",
+    "build:heroes:female": "python scripts/build-hero-pack.py --only female --bg green --cols 8 --rows 8 --frames 8 --inset 4",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
     "android:init": "npx cap add android"

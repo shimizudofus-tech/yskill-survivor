@@ -3,8 +3,20 @@
 > **Studio :** YSkill Studio · **Jeu :** YSkill Survivor · **Domaine :** https://yskillstudio.com  
 > **Plateforme cible :** Android mobile vertical 9:16 · **App ID :** `com.yskillstudio.survivor`
 
-Ce manifeste recense les fichiers graphiques et audio **à produire séparément**.  
-Aucun asset listé ici n’est requis pour jouer au prototype actuel (UI CSS + formes canvas).
+Ce manifeste recense les fichiers graphiques et audio **à produire ou intégrés**.  
+Référence unique du projet — mettre à jour ce fichier à chaque nouvel asset.
+
+## Où placer les fichiers (important)
+
+| Dossier | Rôle |
+|---------|------|
+| **`www/play/assets/`** | **Runtime** — chargé par le jeu et déployé sur Cloudflare Pages. Tout asset in-game va ici. |
+| **`www/assets/`** | **Manifeste + branding source** — structure cible, `.gitkeep`, logos source. Pas de doublon gameplay si déjà dans `play/assets`. |
+| **`www/play/assets/hero/references/`** | Spritesheets source (Layer/Gemini) avant `build-hero-pack.py`. |
+| **`scripts/`** | Pipeline build (`build-hero-pack.py`, etc.). |
+| **`docs/`** | Prompts IA, déploiement, GDD. |
+
+**Règle :** un asset gameplay = **un seul chemin** sous `www/play/assets/`. Ne pas copier la map Stage 1 dans `www/assets/` (référencer le chemin `play` ci-dessous).
 
 **Légende des états**
 
@@ -51,44 +63,59 @@ Aucun asset listé ici n’est requis pour jouer au prototype actuel (UI CSS + f
 
 ## Héros v1 — **Arin** (héros masculin · `hero_male`)
 
-> Pack officiel : **`yskill_hero_male_sprites_transparent_v7`**  
-> Chemin jeu : `www/play/assets/hero/male/` · Config : `www/play/js/hero-config.js`
+> Chemin jeu : `www/play/assets/hero/male/` · Config : `HERO_MALE_CONFIG` dans `hero-config.js`  
+> Sources : `www/play/assets/hero/references/arin-spritesheet-layer.png`, `arin-ref-v2.png`
 
 ### Arborescence intégrée
 
 ```
-hero/male/
-  full_sheet/
-  movement/frames_128/ + frames_256/
-  attacks/{front_slash,circle_slash,dash,magic_shot}/frames_128/ + frames_256/
-  previews/
+www/play/assets/hero/male/
+  movement/frames_128/
+  attacks/{front_slash,circle_slash,dash,magic_shot}/frames_128/
+  ui/portrait_512.png, ui/icon_128.png
+  full_sheet/hero_sprite_sheet_transparent_128.png
   manifest.json
   README_CURSOR.md
 ```
 
-### Animations (noms originaux conservés)
+### Animations (5 frames)
 
 | Clé config | Fichiers |
 |------------|----------|
 | `idle` | `idle_01.png` … `idle_05.png` |
-| `walkDown` | `walk_down_01.png` … |
-| `walkSide` | `walk_side_01.png` … |
-| `walkUp` | `walk_up_01.png` … |
-| `frontSlash` | `front_slash_01.png` … |
-| `circleSlash` | `circle_slash_01.png` … |
-| `dash` | `dash_01.png` … |
-| `magicShot` | `magic_shot_01.png` … |
+| `walkDown` / `walkSide` / `walkUp` | `walk_*_01.png` … |
+| `frontSlash` / `circleSlash` / `dash` / `magicShot` | `attacks/*/frames_128/*.png` |
 
-In-game : frames **128 px** affichées à **64 px** (`visualScale: 0.5`), hitbox **18 px**.
+In-game : frames **128 px**, `visualScale: 0.44`, hitbox **18 px**.
 
 | Fichier | État |
 |---------|------|
 | `movement/frames_128/*` | INTEGRATED |
-| `attacks/*/frames_128/*` | READY (phase 2 attaques) |
+| `attacks/*/frames_128/*` | INTEGRATED |
+| `ui/portrait_512.png`, `ui/icon_128.png` | INTEGRATED |
 | `full_sheet/hero_sprite_sheet_transparent_128.png` | INTEGRATED |
-| `hero-arin-default.png` portrait 512 | TODO |
 
-> **Héroïne** : pack séparé plus tard · `HERO_FEMALE_CONFIG` à ajouter.
+Génération : `npm run build:heroes` → `scripts/build-hero-pack.py --only male --cols 5 --rows 8 --frames 5`
+
+---
+
+## Héroïne v1 — **Lyra** (héroïne féminine · `hero_female`)
+
+> Chemin jeu : `www/play/assets/hero/female/` · Config : `HERO_FEMALE_CONFIG` dans `hero-config.js`  
+> Sources : `www/play/assets/hero/references/lyra-spritesheet-layer.png`, `lyra-ref.png`
+
+Même arborescence qu’Arin ; **8 frames** par animation (`frameCount: 8`).
+
+| Dossier | Contenu | État |
+|---------|---------|------|
+| `movement/frames_128/` | idle, walk_* (8 frames) | INTEGRATED |
+| `attacks/*/frames_128/` | front_slash, circle_slash, dash, magic_shot | INTEGRATED |
+| `ui/portrait_512.png`, `ui/icon_128.png` | Sélection héros | INTEGRATED |
+| `full_sheet/` | Spritesheet compacte | INTEGRATED |
+
+Génération : `npm run build:heroes:female` → grille **8×8**, `--frames 8`
+
+Sélection joueur Arin / Lyra : **INTEGRATED** (accueil + Réglages).
 
 ---
 
@@ -96,14 +123,16 @@ In-game : frames **128 px** affichées à **64 px** (`visualScale: 0.5`), hitbox
 
 **Boss :** Gelée Runique (`rune_slime`) · **Thème :** forêt runique, teal/vert
 
-### `adventure/stage-01/backgrounds/`
+### `www/play/assets/adventure/stage-01/backgrounds/`
 
 | Fichier | Dimensions | Utilité | État |
 |---------|------------|---------|------|
+| `stage_01_gameplay_map.png` | **720×1280** | Fond world map Aventure (forêt / arène circulaire) | INTEGRATED |
+| `stage_01_collision_overlay.png` | 720×1280 | Référence debug collisions (vert/rouge) | INTEGRATED |
 | `stage-01-map-thumb.png` | 220×330 (2∶3) | Vignette carte Aventure | TODO |
-| `stage_01_gameplay_map.png` | **720×1280** | Fond world map Aventure (vue dessus, zone praticable au centre) | TODO |
-| `stage-01-arena-bg.png` | 360×640 | *(legacy)* arène fixe — remplacé par gameplay map | DEPRECATED |
 | `stage-01-briefing-bg.png` | 720×1280 | Fond panneau briefing (optionnel) | TODO |
+
+Collisions : `www/play/js/adventure-world.js` → `STAGE_01_WORLD` · debug **F2** avec `?debug=1`
 
 ### `adventure/stage-01/boss/`
 
@@ -345,14 +374,15 @@ In-game : frames **128 px** affichées à **64 px** (`visualScale: 0.5`), hitbox
 
 ## Intégration future (hors scope actuel)
 
-Quand un asset passe en `READY`, l'intégration se fera par :
+Quand un asset passe en `READY` ou `INTEGRATED` :
 
-1. Copie du fichier dans le dossier listé ci-dessus.
-2. Mise à jour de l'état dans ce manifeste → `INTEGRATED`.
-3. Référence explicite dans le code (`index.html`, `app.css`, `game.js`, Capacitor resources).
+1. Placer le fichier dans **`www/play/assets/...`** (chemin runtime).
+2. Mettre à jour **ce manifeste** (`www/assets/ASSETS_MANIFEST.md`).
+3. Référencer dans le code si nouveau chemin (`hero-config.js`, `adventure-world.js`, etc.).
+4. `npm run deploy` pour Cloudflare Pages.
 
-Le prototype v0.4 conserve les **dégradés CSS** et **formes canvas** jusqu'à intégration asset par asset.
+Prompts héros IA : `docs/LEONARDO-HERO-PROMPTS.md`
 
 ---
 
-*Dernière mise à jour : structure initiale — tous les assets en `TODO`.*
+*Dernière mise à jour : Arin + Lyra intégrés, Stage 1 map, pipeline `scripts/build-hero-pack.py`.*

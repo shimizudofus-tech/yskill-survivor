@@ -1,8 +1,12 @@
 /** YSkill Survivor — shared constants */
 export const STORAGE_KEY = "yskill-survivor:v2";
-/** Logical arena — portrait 9:16 (mobile-first). */
-export const ARENA_W = 360;
-export const ARENA_H = 640;
+/** Logical arena — portrait 9:16 (mobile-first). Viewport = visible canvas. */
+export const VIEWPORT_W = 360;
+export const VIEWPORT_H = 640;
+/** @deprecated use VIEWPORT_W — kept for Full Skill fixed arena */
+export const ARENA_W = VIEWPORT_W;
+/** @deprecated use VIEWPORT_H */
+export const ARENA_H = VIEWPORT_H;
 export const ARENA_RATIO = "9 / 16";
 export const PLAYER_R = 14;
 export const BASE_FIRE_MS = 420;

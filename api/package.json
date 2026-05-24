@@ -1,0 +1,15 @@
+{
+  "name": "yskill-survivor-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "YSkill Survivor — ranked runs & leaderboards (Cloudflare Worker)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.19.1"
+  }
+}

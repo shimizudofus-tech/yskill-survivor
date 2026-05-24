@@ -1,0 +1,182 @@
+/** Viewport vs adventure world maps. Full Skill uses viewport = world (fixed arena). */
+
+export const VIEWPORT_W = 360;
+export const VIEWPORT_H = 640;
+
+function dist(ax, ay, bx, by) {
+  return Math.hypot(ax - bx, ay - by);
+}
+
+/** Stage 1 — Clairière Runique: vertical forest corridor. */
+export const STAGE_01_WORLD = {
+  id: 1,
+  worldWidth: 720,
+  worldHeight: 1280,
+  playerSpawn: { x: 360, y: 1180 },
+  bossArena: { x: 360, y: 180, radius: 220 },
+  bossUnlock: {
+    minSurvivalMs: 45_000,
+    minKills: 22,
+    enterRadius: 300,
+  },
+  walkableRects: [
+    { x: 200, y: 1060, w: 320, h: 220, zone: "spawn" },
+    { x: 270, y: 900, w: 180, h: 180, zone: "path_lower" },
+    { x: 90, y: 520, w: 540, h: 400, zone: "clearing" },
+    { x: 270, y: 340, w: 180, h: 200, zone: "runes" },
+  ],
+  theme: "forest",
+  backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
+};
+
+export function defaultAdventureWorld(stageId) {
+  const id = Number(stageId) || 1;
+  const extra = (id - 1) * 120;
+  return {
+    id,
+    worldWidth: 720,
+    worldHeight: 1280 + extra,
+    playerSpawn: { x: 360, y: 1180 + extra * 0.5 },
+    bossArena: { x: 360, y: 180, radius: 210 },
+    bossUnlock: {
+      minSurvivalMs: 40_000 + id * 8_000,
+      minKills: 18 + id * 4,
+      enterRadius: 280,
+    },
+    walkableRects: [
+      { x: 210, y: 1000 + extra * 0.4, w: 300, h: 200 + extra * 0.2, zone: "spawn" },
+      { x: 280, y: 700 + extra * 0.2, w: 160, h: 320, zone: "path" },
+      { x: 120, y: 480, w: 480, h: 260, zone: "clearing" },
+      { x: 280, y: 320, w: 160, h: 180, zone: "approach" },
+    ],
+    theme: "forest",
+    backgroundAsset: null,
+  };
+}
+
+export function getAdventureWorldConfig(stageId) {
+  const id = Number(stageId);
+  if (id === 1) return { ...STAGE_01_WORLD, walkableRects: STAGE_01_WORLD.walkableRects.map((r) => ({ ...r })) };
+  return defaultAdventureWorld(id);
+}
+
+export function isWalkable(world, x, y, margin = 0) {
+  if (!world) return true;
+  const { walkableRects, bossArena } = world;
+  if (bossArena && dist(x, y, bossArena.x, bossArena.y) <= bossArena.radius - margin) {
+    return true;
+  }
+  for (const r of walkableRects || []) {
+    if (
+      x >= r.x + margin &&
+      x <= r.x + r.w - margin &&
+      y >= r.y + margin &&
+      y <= r.y + r.h - margin
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function clampToBossArena(world, x, y, entityR) {
+  const ba = world?.bossArena;
+  if (!ba) return { x, y };
+  const d = dist(x, y, ba.x, ba.y);
+  const maxD = Math.max(8, ba.radius - entityR);
+  if (d <= maxD || d < 0.001) return { x, y };
+  return {
+    x: ba.x + ((x - ba.x) * maxD) / d,
+    y: ba.y + ((y - ba.y) * maxD) / d,
+  };
+}
+
+export function constrainMove(world, ox, oy, nx, ny, r, { lockBossArena = false } = {}) {
+  if (!world) return { x: nx, y: ny };
+  if (lockBossArena && world.bossArena) {
+    return clampToBossArena(world, nx, ny, r);
+  }
+  if (isWalkable(world, nx, ny, r)) return { x: nx, y: ny };
+  if (isWalkable(world, nx, oy, r)) return { x: nx, y: oy };
+  if (isWalkable(world, ox, ny, r)) return { x: ox, y: ny };
+  return { x: ox, y: oy };
+}
+
+export function randomWalkablePoint(world, rand, margin = 24) {
+  if (!world?.walkableRects?.length) {
+    return { x: world?.worldWidth / 2 || 180, y: world?.worldHeight / 2 || 320 };
+  }
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const rect = world.walkableRects[Math.floor(rand() * world.walkableRects.length)];
+    const x = rect.x + margin + rand() * Math.max(1, rect.w - margin * 2);
+    const y = rect.y + margin + rand() * Math.max(1, rect.h - margin * 2);
+    if (isWalkable(world, x, y, margin)) return { x, y };
+  }
+  return { ...world.playerSpawn };
+}
+
+export function randomSpawnNearPlayer(world, px, py, rand, minDist, maxDist, entityR = 12) {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const angle = rand() * Math.PI * 2;
+    const d = minDist + rand() * (maxDist - minDist);
+    const x = px + Math.cos(angle) * d;
+    const y = py + Math.sin(angle) * d;
+    if (isWalkable(world, x, y, entityR) && dist(x, y, px, py) >= minDist - 4) {
+      return { x, y };
+    }
+  }
+  return randomWalkablePoint(world, rand, entityR);
+}
+
+export function playerNearBossArena(world, px, py) {
+  const ba = world?.bossArena;
+  if (!ba) return false;
+  const enter = world.bossUnlock?.enterRadius ?? ba.radius + 40;
+  return dist(px, py, ba.x, ba.y) <= enter;
+}
+
+export function canUnlockBoss(world, elapsedMs, kills) {
+  const u = world?.bossUnlock;
+  if (!u) return false;
+  return elapsedMs >= (u.minSurvivalMs || 0) || kills >= (u.minKills || 999);
+}
+
+export class FollowCamera {
+  constructor(viewW, viewH, worldW, worldH, { smoothing = 0.14 } = {}) {
+    this.viewW = viewW;
+    this.viewH = viewH;
+    this.worldW = worldW;
+    this.worldH = worldH;
+    this.smoothing = smoothing;
+    this.x = 0;
+    this.y = 0;
+    this.targetX = 0;
+    this.targetY = 0;
+  }
+
+  resize(viewW, viewH, worldW, worldH) {
+    this.viewW = viewW;
+    this.viewH = viewH;
+    this.worldW = worldW;
+    this.worldH = worldH;
+  }
+
+  follow(px, py, instant = false) {
+    const maxX = Math.max(0, this.worldW - this.viewW);
+    const maxY = Math.max(0, this.worldH - this.viewH);
+    this.targetX = Math.max(0, Math.min(px - this.viewW / 2, maxX));
+    this.targetY = Math.max(0, Math.min(py - this.viewH / 2, maxY));
+    if (instant || this.worldW <= this.viewW) {
+      this.x = this.targetX;
+      this.y = this.targetY;
+      return;
+    }
+    const t = instant ? 1 : this.smoothing;
+    this.x += (this.targetX - this.x) * t;
+    this.y += (this.targetY - this.y) * t;
+  }
+
+  applyTransform(ctx) {
+    ctx.translate(-this.x, -this.y);
+  }
+}

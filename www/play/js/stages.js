@@ -10,6 +10,8 @@ export const STAGES = [
     rewardFirstClear: 50,
     rewardReplay: 10,
     bossId: "rune_slime",
+    theme: "forest",
+    /** World layout: see adventure-world.js → STAGE_01_WORLD (720×1280). */
   },
   {
     id: 2,
@@ -20,6 +22,7 @@ export const STAGES = [
     rewardFirstClear: 65,
     rewardReplay: 12,
     bossId: "brutal_mushroom",
+    theme: "path",
   },
   {
     id: 3,
@@ -30,6 +33,7 @@ export const STAGES = [
     rewardFirstClear: 80,
     rewardReplay: 15,
     bossId: "astral_toad",
+    theme: "marsh",
   },
   {
     id: 4,
@@ -40,6 +44,7 @@ export const STAGES = [
     rewardFirstClear: 110,
     rewardReplay: 20,
     bossId: "mist_wolf",
+    theme: "mist",
   },
   {
     id: 5,
@@ -50,6 +55,7 @@ export const STAGES = [
     rewardFirstClear: 180,
     rewardReplay: 35,
     bossId: "sylvan_guardian",
+    theme: "ancient",
   },
 ];
 

@@ -10,6 +10,14 @@ npm install
 npm start
 ```
 
+API classements (Worker séparé) :
+
+```bash
+npm run api:dev    # http://localhost:8787
+```
+
+Voir [docs/SURVIVOR-API.md](docs/SURVIVOR-API.md) — OAuth, KV, déploiement `survivor-api.yskillstudio.com`.
+
 Ouvre [http://localhost:5173](http://localhost:5173) — accueil studio ; jeu sur [/play/](http://localhost:5173/play/).
 
 Site production : **https://yskillstudio.com** · Privacy : **https://yskillstudio.com/privacy.html**
@@ -41,6 +49,7 @@ Voir `docs/ANDROID-ADS.md` pour AdMob et Play Store.
 | [docs/EXTRACTION-CHECKLIST.md](docs/EXTRACTION-CHECKLIST.md) | Reprise depuis build-sim |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Plan 6 mois |
 | [docs/CLOUDFLARE-YSKILLSTUDIO.md](docs/CLOUDFLARE-YSKILLSTUDIO.md) | Domaine **yskillstudio.com** + Pages |
+| [docs/SURVIVOR-API.md](docs/SURVIVOR-API.md) | API online — auth optionnelle + leaderboards |
 
 ## Stack
 

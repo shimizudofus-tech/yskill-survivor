@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "yskill-survivor-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-05-16",
+  "workers_dev": true,
+  // Create KV: wrangler kv namespace create SURVIVOR_KV
+  "kv_namespaces": [
+    {
+      "binding": "SURVIVOR_KV",
+      "id": "6cfae7e843fb4e5cafa7e54e6727a6cf"
+    }
+  ],
+  "vars": {
+    "PUBLIC_PLAY_URL": "https://yskillstudio.com/play/",
+    "CORS_ORIGINS": "https://yskillstudio.com,http://localhost:5173,http://127.0.0.1:5173"
+  }
+}

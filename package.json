@@ -1,11 +1,13 @@
 {
   "name": "yskill-survivor",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "YSkill Survivor — arcade survivor mobile (web + Android)",
   "scripts": {
     "start": "npx --yes serve www -p 5173",
-    "deploy": "wrangler pages deploy www --project-name=yskillstudio",
+    "api:dev": "npm run dev --prefix api",
+    "api:deploy": "npm run deploy --prefix api",
+    "deploy": "npx wrangler pages deploy www --project-name=yskillstudio --commit-dirty=true",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
     "android:init": "npx cap add android"

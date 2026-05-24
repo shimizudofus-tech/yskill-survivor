@@ -1,4 +1,6 @@
 import {
+  VIEWPORT_W,
+  VIEWPORT_H,
   ARENA_W,
   ARENA_H,
   PLAYER_R,
@@ -9,6 +11,17 @@ import {
   RUN_UPGRADE_POOL,
   LEVEL_UP_INTERVAL_MS,
 } from "./config.js";
+import {
+  getAdventureWorldConfig,
+  FollowCamera,
+  constrainMove,
+  isWalkable,
+  randomWalkablePoint,
+  randomSpawnNearPlayer,
+  playerNearBossArena,
+  canUnlockBoss,
+  clampToBossArena,
+} from "./adventure-world.js";
 import { getBossDefinition } from "./stages.js";
 import { Sfx } from "./audio.js";
 
@@ -59,6 +72,22 @@ export class YSkillSurvivorGame {
     this.metaEffects = options.effects || {};
     this.runConfig = options.runConfig || { mode: "adventure" };
     this.stageConfig = this.runConfig.stageConfig || null;
+    this.viewW = VIEWPORT_W;
+    this.viewH = VIEWPORT_H;
+    this.isAdventureWorld = this.runConfig.mode === "adventure" && Boolean(this.stageConfig?.id);
+    this.worldConfig = this.isAdventureWorld ? getAdventureWorldConfig(this.stageConfig.id) : null;
+    this.worldW = this.worldConfig?.worldWidth ?? VIEWPORT_W;
+    this.worldH = this.worldConfig?.worldHeight ?? VIEWPORT_H;
+    this.camera = this.worldConfig
+      ? new FollowCamera(VIEWPORT_W, VIEWPORT_H, this.worldW, this.worldH)
+      : null;
+    this._bossArenaUnlocked = false;
+    this._bossFightLocked = false;
+    this._bgImage = null;
+    this._bgImageReady = false;
+    if (this.worldConfig?.backgroundAsset) {
+      this._loadBackground(this.worldConfig.backgroundAsset);
+    }
     this.difficultyMult = this.stageConfig?.difficultyMultiplier ?? 1;
     this.bossAtMs = this.stageConfig?.durationBeforeBossMs ?? 5 * 60 * 1000;
     this.bossWarnMs = Math.max(0, this.bossAtMs - 2000);
@@ -92,7 +121,8 @@ export class YSkillSurvivorGame {
     this.invulnMs = 0;
     this.shakeMs = 0;
 
-    this.player = { x: ARENA_W / 2, y: ARENA_H / 2, vx: 0, vy: 0 };
+    const spawn = this.worldConfig?.playerSpawn ?? { x: VIEWPORT_W / 2, y: VIEWPORT_H / 2 };
+    this.player = { x: spawn.x, y: spawn.y, vx: 0, vy: 0 };
     this.enemies = [];
     this.bullets = [];
     this.pickups = [];
@@ -167,11 +197,26 @@ export class YSkillSurvivorGame {
     return { vx, vy };
   }
 
+  _loadBackground(path) {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      this._bgImage = img;
+      this._bgImageReady = true;
+    };
+    img.onerror = () => {
+      this._bgImage = null;
+      this._bgImageReady = false;
+    };
+    img.src = path;
+  }
+
   _resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = ARENA_W * dpr;
-    this.canvas.height = ARENA_H * dpr;
+    this.canvas.width = VIEWPORT_W * dpr;
+    this.canvas.height = VIEWPORT_H * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.camera?.resize(VIEWPORT_W, VIEWPORT_H, this.worldW, this.worldH);
   }
 
   applyEffects(effects) {
@@ -289,13 +334,17 @@ export class YSkillSurvivorGame {
     this._lastEliteDecade = -1;
     this._bossSpawned = false;
     this._bossWarning = null;
+    this._bossArenaUnlocked = false;
+    this._bossFightLocked = false;
     this._stageCleared = false;
     this.invulnMs = 800;
     this.shakeMs = 0;
-    this.player.x = ARENA_W / 2;
-    this.player.y = ARENA_H / 2;
+    const spawn = this.worldConfig?.playerSpawn ?? { x: VIEWPORT_W / 2, y: VIEWPORT_H / 2 };
+    this.player.x = spawn.x;
+    this.player.y = spawn.y;
     this.player.vx = 0;
     this.player.vy = 0;
+    this.camera?.follow(this.player.x, this.player.y, true);
     requestAnimationFrame((t) => this._loop(t));
   }
 
@@ -389,8 +438,22 @@ export class YSkillSurvivorGame {
       this.player.vy = (vy / len) * speed;
     }
 
-    this.player.x = clamp(this.player.x + (this.player.vx * dt) / 1000, PLAYER_R, ARENA_W - PLAYER_R);
-    this.player.y = clamp(this.player.y + (this.player.vy * dt) / 1000, PLAYER_R, ARENA_H - PLAYER_R);
+    const ox = this.player.x;
+    const oy = this.player.y;
+    const nx = ox + (this.player.vx * dt) / 1000;
+    const ny = oy + (this.player.vy * dt) / 1000;
+
+    if (this.worldConfig) {
+      const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R, {
+        lockBossArena: this._bossFightLocked,
+      });
+      this.player.x = p.x;
+      this.player.y = p.y;
+      this.camera?.follow(this.player.x, this.player.y);
+    } else {
+      this.player.x = clamp(nx, PLAYER_R, this.worldW - PLAYER_R);
+      this.player.y = clamp(ny, PLAYER_R, this.worldH - PLAYER_R);
+    }
 
     if (!this._bossSpawned) {
       this.spawnTimer -= dt;
@@ -398,23 +461,36 @@ export class YSkillSurvivorGame {
       const maxEnemies = Math.min(50, Math.floor(14 + diff * 10));
       if (this.spawnTimer <= 0 && this.enemies.length < maxEnemies) {
         this.spawnTimer = spawnEvery;
-        this._spawnEnemy(diff);
+        if (this.worldConfig) this._spawnEnemyWorld(diff);
+        else this._spawnEnemy(diff);
       }
 
       const decade = Math.floor(sec / 10);
       if (decade >= 1 && decade !== this._lastEliteDecade) {
         this._lastEliteDecade = decade;
-        this._spawnElite(decade, diff);
+        if (this.worldConfig) this._spawnEliteWorld(decade, diff);
+        else this._spawnElite(decade, diff);
       }
     }
 
-    if (this.elapsedMs >= this.bossWarnMs && !this._bossSpawned && !this._bossWarning) {
+    if (this.worldConfig) {
+      this._updateAdventureBoss();
+    } else if (this.elapsedMs >= this.bossWarnMs && !this._bossSpawned && !this._bossWarning) {
       this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
     }
+
     if (this._bossWarning && !this._bossSpawned) {
       if (this.elapsedMs - this._bossWarning.startedAt >= this._bossWarning.duration) {
         this._spawnStageBoss();
         this._bossSpawned = true;
+        this._bossFightLocked = Boolean(this.worldConfig);
+        if (this.worldConfig?.bossArena) {
+          const ba = this.worldConfig.bossArena;
+          const c = clampToBossArena(this.worldConfig, ba.x, ba.y + 40, PLAYER_R);
+          this.player.x = c.x;
+          this.player.y = c.y;
+          this.camera?.follow(this.player.x, this.player.y, true);
+        }
         this._bossWarning = null;
         this.sfx.boss();
         this.onImpact?.("heavy");
@@ -431,7 +507,8 @@ export class YSkillSurvivorGame {
     this.pickupSpawnTimer -= dt;
     if (this.pickupSpawnTimer <= 0 && this.pickups.length < 5) {
       this.pickupSpawnTimer = 1800 + this.rand() * 1400;
-      this._spawnPickup();
+      if (this.worldConfig) this._spawnPickupWorld();
+      else this._spawnPickup();
     }
 
     for (const p of this.pickups) p.lifeMs -= dt;
@@ -457,7 +534,14 @@ export class YSkillSurvivorGame {
       b.y += b.vy * (dt / 1000);
       b.life -= dt;
     }
-    this.bullets = this.bullets.filter((b) => b.life > 0);
+    this.bullets = this.bullets.filter(
+      (b) =>
+        b.life > 0 &&
+        b.x >= -40 &&
+        b.y >= -40 &&
+        b.x <= this.worldW + 40 &&
+        b.y <= this.worldH + 40,
+    );
 
     const maxHits = eff.multishotHits || 1;
     const dmg = eff.bulletDamage || 1;
@@ -574,6 +658,114 @@ export class YSkillSurvivorGame {
 
     e.x += dx * ((baseSpeed * mul * dt) / 1000);
     e.y += dy * ((baseSpeed * mul * dt) / 1000);
+
+    if (this.worldConfig) {
+      if (this._bossFightLocked) {
+        const c = clampToBossArena(this.worldConfig, e.x, e.y, e.r);
+        e.x = c.x;
+        e.y = c.y;
+      } else if (!isWalkable(this.worldConfig, e.x, e.y, e.r * 0.45)) {
+        e.x -= dx * ((baseSpeed * mul * dt) / 1000);
+        e.y -= dy * ((baseSpeed * mul * dt) / 1000);
+      }
+    }
+  }
+
+  _updateAdventureBoss() {
+    if (this._bossSpawned) return;
+
+    if (
+      !this._bossArenaUnlocked &&
+      playerNearBossArena(this.worldConfig, this.player.x, this.player.y) &&
+      canUnlockBoss(this.worldConfig, this.elapsedMs, this.kills)
+    ) {
+      this._bossArenaUnlocked = true;
+    }
+
+    if (
+      this._bossArenaUnlocked &&
+      !this._bossWarning &&
+      playerNearBossArena(this.worldConfig, this.player.x, this.player.y)
+    ) {
+      this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
+    }
+  }
+
+  _spawnEnemyWorld(diff) {
+    const minDist = Math.max(this.viewW, this.viewH) * 0.52;
+    const maxDist = minDist + 140;
+    let pos;
+    if (this._bossFightLocked && this.worldConfig.bossArena) {
+      const ba = this.worldConfig.bossArena;
+      const angle = this.rand() * Math.PI * 2;
+      const d = ba.radius * (0.35 + this.rand() * 0.55);
+      pos = { x: ba.x + Math.cos(angle) * d, y: ba.y + Math.sin(angle) * d };
+    } else {
+      pos = randomSpawnNearPlayer(
+        this.worldConfig,
+        this.player.x,
+        this.player.y,
+        this.rand,
+        minDist,
+        maxDist,
+        12,
+      );
+    }
+    const type = ENEMY_TYPES[Math.floor(this.rand() * ENEMY_TYPES.length)];
+    const hpScale = Math.max(1, Math.floor(type.hp * this.difficultyMult));
+    this.enemies.push({
+      ...type,
+      x: pos.x,
+      y: pos.y,
+      kind: "normal",
+      color: PALETTE[Math.floor(this.rand() * PALETTE.length)],
+      hp: hpScale,
+      maxHp: hpScale,
+    });
+  }
+
+  _spawnEliteWorld(decade, diff) {
+    const minDist = Math.max(this.viewW, this.viewH) * 0.45;
+    const pos = randomSpawnNearPlayer(
+      this.worldConfig,
+      this.player.x,
+      this.player.y,
+      this.rand,
+      minDist,
+      minDist + 100,
+      18,
+    );
+    const hp = Math.floor((4 + decade) * this.difficultyMult);
+    this.enemies.push({
+      id: "elite",
+      shape: "star",
+      x: pos.x,
+      y: pos.y,
+      r: 18 + decade,
+      kind: "elite",
+      color: "#ff6eb4",
+      hp,
+      maxHp: hp,
+      speedMul: 0.78,
+    });
+  }
+
+  _spawnPickupWorld() {
+    const pos = randomSpawnNearPlayer(
+      this.worldConfig,
+      this.player.x,
+      this.player.y,
+      this.rand,
+      40,
+      Math.max(this.viewW, this.viewH) * 0.45,
+      8,
+    );
+    this.pickups.push({
+      x: pos.x,
+      y: pos.y,
+      value: 15 + Math.floor(this.rand() * 25),
+      lifeMs: 4000,
+    });
   }
 
   _spawnEnemy(diff) {
@@ -644,10 +836,13 @@ export class YSkillSurvivorGame {
     const def = getBossDefinition(this._stageBossId);
     if (!def) return;
     const hp = Math.floor(def.hp * this.difficultyMult);
+    const ba = this.worldConfig?.bossArena;
+    const bx = ba ? ba.x : VIEWPORT_W / 2;
+    const by = ba ? ba.y : -40;
     this.enemies.push({
       ...def,
-      x: ARENA_W / 2,
-      y: -40,
+      x: bx,
+      y: by,
       kind: "boss",
       bossId: def.id,
       hp,
@@ -774,6 +969,97 @@ export class YSkillSurvivorGame {
     }
   }
 
+  _drawWorldBackground(ctx) {
+    const w = this.worldW;
+    const h = this.worldH;
+
+    if (this._bgImageReady && this._bgImage) {
+      ctx.drawImage(this._bgImage, 0, 0, w, h);
+      return;
+    }
+
+    ctx.fillStyle = "#071008";
+    ctx.fillRect(0, 0, w, h);
+
+    for (const r of this.worldConfig?.walkableRects || []) {
+      const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+      if (r.zone === "clearing") {
+        grd.addColorStop(0, "#1a3d28");
+        grd.addColorStop(1, "#142f20");
+      } else if (r.zone === "spawn") {
+        grd.addColorStop(0, "#152a1c");
+        grd.addColorStop(1, "#0f2016");
+      } else {
+        grd.addColorStop(0, "#132618");
+        grd.addColorStop(1, "#0e1d12");
+      }
+      ctx.fillStyle = grd;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+
+    const ba = this.worldConfig?.bossArena;
+    if (ba) {
+      ctx.fillStyle = "#1a3328";
+      ctx.beginPath();
+      ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(94, 234, 212, 0.15)";
+      ctx.setLineDash([8, 10]);
+      ctx.beginPath();
+      ctx.arc(ba.x, ba.y, ba.radius - 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.fillStyle = "rgba(4, 8, 6, 0.85)";
+    ctx.fillRect(0, 0, w, 80);
+    ctx.fillRect(0, h - 60, w, 60);
+    ctx.fillRect(0, 0, 70, h);
+    ctx.fillRect(w - 70, 0, 70, h);
+
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.08)";
+    ctx.lineWidth = 1;
+    const step = 48;
+    for (let gx = 0; gx <= w; gx += step) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, h);
+      ctx.stroke();
+    }
+    for (let gy = 0; gy <= h; gy += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(w, gy);
+      ctx.stroke();
+    }
+  }
+
+  _drawArenaBackground(ctx) {
+    ctx.fillStyle = "#0c0f14";
+    ctx.fillRect(0, 0, this.viewW, this.viewH);
+
+    ctx.strokeStyle = "#2a3347";
+    ctx.lineWidth = 1;
+    const gridStep = 40;
+    for (let g = 0; g <= this.viewW; g += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(g, 0);
+      ctx.lineTo(g, this.viewH);
+      ctx.stroke();
+    }
+    for (let g = 0; g <= this.viewH; g += gridStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, g);
+      ctx.lineTo(this.viewW, g);
+      ctx.stroke();
+    }
+  }
+
   _draw() {
     const ctx = this.ctx;
     ctx.save();
@@ -781,25 +1067,23 @@ export class YSkillSurvivorGame {
       ctx.translate((this.rand() - 0.5) * 6, (this.rand() - 0.5) * 6);
     }
 
-    ctx.fillStyle = "#0c0f14";
-    ctx.fillRect(0, 0, ARENA_W, ARENA_H);
-
-    ctx.strokeStyle = "#2a3347";
-    ctx.lineWidth = 1;
-    const gridStep = 40;
-    for (let g = 0; g <= ARENA_W; g += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(g, 0);
-      ctx.lineTo(g, ARENA_H);
-      ctx.stroke();
-    }
-    for (let g = 0; g <= ARENA_H; g += gridStep) {
-      ctx.beginPath();
-      ctx.moveTo(0, g);
-      ctx.lineTo(ARENA_W, g);
-      ctx.stroke();
+    if (this.worldConfig && this.camera) {
+      this._drawWorldBackground(ctx);
+      ctx.save();
+      this.camera.applyTransform(ctx);
+      this._drawEntities(ctx);
+      ctx.restore();
+      this._drawScreenOverlay(ctx);
+    } else {
+      this._drawArenaBackground(ctx);
+      this._drawEntities(ctx);
+      this._drawScreenOverlay(ctx);
     }
 
+    ctx.restore();
+  }
+
+  _drawEntities(ctx) {
     for (const p of this.pickups) {
       const pulse = 0.7 + 0.3 * Math.sin(this.elapsedMs / 120 + p.x);
       ctx.fillStyle = `rgba(255, 229, 102, ${pulse})`;
@@ -858,24 +1142,24 @@ export class YSkillSurvivorGame {
     ctx.fill();
     ctx.stroke();
     ctx.globalAlpha = 1;
+  }
 
+  _drawScreenOverlay(ctx) {
     if (this._bossWarning) {
       const t = (this.elapsedMs - this._bossWarning.startedAt) / this._bossWarning.duration;
       const bossLabel = this.stageConfig?.bossName || this.tBoss();
       ctx.fillStyle = `rgba(168, 85, 247, ${0.35 + 0.35 * Math.sin(t * 20)})`;
       ctx.font = "bold 22px system-ui,sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(bossLabel, ARENA_W / 2, ARENA_H / 2 - 12);
+      ctx.fillText(bossLabel, this.viewW / 2, this.viewH / 2 - 12);
       ctx.font = "bold 16px system-ui,sans-serif";
-      ctx.fillText(this.tBoss(), ARENA_W / 2, ARENA_H / 2 + 16);
+      ctx.fillText(this.tBoss(), this.viewW / 2, this.viewH / 2 + 16);
     }
 
     if (this.levelUpPending) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-      ctx.fillRect(0, 0, ARENA_W, ARENA_H);
+      ctx.fillRect(0, 0, this.viewW, this.viewH);
     }
-
-    ctx.restore();
   }
 }
 

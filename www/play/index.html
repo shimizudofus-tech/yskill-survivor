@@ -3,73 +3,133 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#0c0f14" />
+  <meta name="theme-color" content="#080D18" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="YSkill Survivor — survive, score, upgrade. Free arcade survivor game by YSkill Studio." />
+  <meta name="description" content="YSkill Survivor — gagne des YS, progresse en Aventure, terrasse les boss. Jeu mobile survivor gratuit par YSkill Studio." />
   <link rel="canonical" href="https://yskillstudio.com/play/" />
+  <link rel="icon" type="image/svg+xml" href="assets/branding/logo/logo-ys-currency.svg" />
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="YSkill Studio" />
+  <meta property="og:title" content="YSkill Survivor — Monnaie YS &amp; mode Aventure" />
+  <meta property="og:description" content="Survis, farm des YS, améliore ton héros et bats les boss en 9:16 mobile." />
   <meta property="og:url" content="https://yskillstudio.com/play/" />
+  <meta property="og:image" content="https://yskillstudio.com/play/assets/branding/logo/icon-ys-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="YSkill Survivor" />
+  <meta name="twitter:description" content="Gagne des YS, progresse en Aventure, mode Full Skill à venir." />
+  <meta name="twitter:image" content="https://yskillstudio.com/play/assets/branding/logo/icon-ys-512.png" />
   <title>YSkill Survivor</title>
   <link rel="stylesheet" href="./css/app.css" />
 </head>
 <body>
+  <div class="app-bg" aria-hidden="true">
+    <div class="app-bg-runes"></div>
+    <div class="app-bg-glow app-bg-glow--cyan"></div>
+    <div class="app-bg-glow app-bg-glow--violet"></div>
+  </div>
+
   <div id="app">
-    <header class="top-bar">
-      <div class="brand">
-        <span class="brand-mark">Y</span>
-        <div>
-          <strong data-i18n="app.title">YSkill Survivor</strong>
-          <small data-i18n="app.tagline">Survis. Score. Améliore.</small>
-        </div>
+    <header class="top-bar" id="topBar" hidden>
+      <button type="button" class="btn-icon btn-back" id="btnBack" aria-label="Retour">←</button>
+      <div class="top-bar-title" id="topBarTitle">YSkill Survivor</div>
+      <div class="ys-pill" title="YS — monnaie du jeu">
+        <img class="ys-icon" src="assets/branding/logo/logo-ys-currency.svg" alt="YS" width="18" height="18" decoding="async" />
+        <span data-ys-balance id="ysBalance">0</span>
       </div>
-      <div class="ys-pill"><span data-ys-balance id="ysBalance">0</span> YS</div>
     </header>
 
     <main>
-      <section id="screenHome" class="screen">
-        <div class="hero-card">
-          <p class="hero-tag">v0.4 · Aventure · 9:16</p>
-          <h1 data-i18n="app.title">YSkill Survivor</h1>
-          <p data-i18n="app.tagline">Survis. Score. Améliore.</p>
+      <!-- HOME -->
+      <section id="screenHome" class="screen screen-home">
+        <div class="home-ys ys-pill ys-pill--gold" title="YS — monnaie du jeu">
+          <img class="ys-icon ys-icon--lg" src="assets/branding/logo/logo-ys-currency.svg" alt="YS" width="22" height="22" decoding="async" />
+          <span data-ys-balance>0</span>
         </div>
-        <nav class="menu-grid">
-          <button type="button" class="btn btn-primary btn-mode" data-nav="adventure">
-            <strong data-i18n="nav.adventure">Aventure</strong>
-            <span data-i18n="nav.adventureSub">Progresse. Améliore-toi. Terrasse les boss.</span>
-          </button>
-          <button type="button" class="btn btn-mode btn-disabled" data-nav="fullskill" disabled>
-            <strong data-i18n="nav.fullSkill">Full Skill</strong>
-            <span data-i18n="nav.fullSkillSoon">Bientôt disponible</span>
-          </button>
-          <button type="button" class="btn" data-nav="shop" data-i18n="nav.shop">Shop YS</button>
-          <button type="button" class="btn" data-nav="scores" data-i18n="nav.scores">Classements</button>
-          <button type="button" class="btn" data-nav="settings" data-i18n="nav.settings">Réglages</button>
-        </nav>
-      </section>
-
-      <section id="screenAdventure" class="screen" hidden>
-        <div class="panel panel-adventure">
-          <h2 data-i18n="adventure.title">Carte Aventure</h2>
-          <div id="adventurePath" class="adventure-path"></div>
-          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
-        </div>
-        <div id="stagePanel" class="overlay overlay-stage" hidden>
-          <div class="panel stage-detail">
-            <h2 id="stagePanelName">Stage</h2>
-            <p class="stat-line"><span data-i18n="adventure.boss">Boss</span>: <strong id="stagePanelBoss">—</strong></p>
-            <p class="stat-line"><span data-i18n="adventure.bestScore">Meilleur score</span>: <strong id="stagePanelScore">—</strong></p>
-            <p class="stat-line"><span data-i18n="adventure.bestTime">Meilleur temps</span>: <strong id="stagePanelTime">—</strong></p>
-            <p class="stat-line"><span data-i18n="adventure.rewardFirst">Première victoire</span>: <strong id="stagePanelRewardFirst">—</strong> YS</p>
-            <p class="stat-line"><span data-i18n="adventure.rewardReplay">Replay</span>: <strong id="stagePanelRewardReplay">—</strong> YS</p>
-            <div class="btn-stack">
-              <button type="button" class="btn btn-primary btn-lg" id="btnStageLaunch" data-i18n="btn.launch">Lancer</button>
-              <button type="button" class="btn" id="btnStageClose" data-i18n="btn.close">Fermer</button>
+        <div class="home-auth" id="homeAuth">
+          <div class="auth-user" id="authUser" hidden>
+            <img class="auth-avatar" id="authAvatar" alt="" width="28" height="28" decoding="async" />
+            <span class="auth-name" id="authName"></span>
+            <button type="button" class="btn-icon btn-auth-out" id="btnSignOut" aria-label="Déconnexion">×</button>
+          </div>
+          <div class="auth-signin" id="authSignIn">
+            <button type="button" class="btn btn-sm btn-auth" id="btnSignIn" data-i18n="auth.signIn">Se connecter pour classer</button>
+            <div class="auth-providers" id="authProviders" hidden>
+              <button type="button" class="btn btn-sm" data-login="discord">Discord</button>
+              <button type="button" class="btn btn-sm" data-login="google">Google</button>
             </div>
           </div>
         </div>
+        <div class="home-hero">
+          <p class="home-studio">YSkill Studio</p>
+          <h1 class="home-logo">
+            <img
+              class="home-logo-img"
+              src="assets/branding/logo/logo-yskill-survivor-full.png"
+              width="512"
+              height="512"
+              alt="YSkill Survivor"
+              decoding="async"
+            />
+          </h1>
+          <p class="home-tagline" data-i18n="app.tagline">Survis. Score. Améliore.</p>
+        </div>
+        <nav class="home-menu">
+          <button type="button" class="btn btn-hero btn-hero--adventure" data-nav="adventure">
+            <span class="btn-hero-label" data-i18n="nav.adventure">Aventure</span>
+            <span class="btn-hero-sub" data-i18n="nav.adventureSub">Progresse. Améliore-toi. Terrasse les boss.</span>
+          </button>
+          <button type="button" class="btn btn-hero btn-hero--arena" data-nav="fullskill">
+            <span class="btn-hero-label" data-i18n="nav.fullSkill">Full Skill</span>
+            <span class="btn-hero-sub" data-i18n="nav.fullSkillSub">Aucun avantage permanent. Seul ton skill compte.</span>
+          </button>
+          <div class="home-menu-row">
+            <button type="button" class="btn btn-menu-secondary" data-nav="scores" data-i18n="nav.scores">Classements</button>
+            <button type="button" class="btn btn-menu-secondary" data-nav="shop" data-i18n="nav.upgrades">Améliorations</button>
+            <button type="button" class="btn btn-menu-secondary" data-nav="settings" data-i18n="nav.settings">Réglages</button>
+          </div>
+        </nav>
+        <footer class="home-foot">© <a href="https://yskillstudio.com/">YSkill Studio</a></footer>
       </section>
 
+      <!-- AVENTURE MAP -->
+      <section id="screenAdventure" class="screen screen-adventure" hidden>
+        <div class="screen-intro">
+          <p class="eyebrow eyebrow--nature" data-i18n="adventure.eyebrow">Mode Aventure</p>
+          <h2 class="screen-title" data-i18n="adventure.title">Carte Aventure</h2>
+          <p class="screen-sub muted" data-i18n="adventure.sub">Forêt runique · progression par stages</p>
+        </div>
+        <div id="adventurePath" class="adventure-path"></div>
+      </section>
+
+      <!-- FULL SKILL -->
+      <section id="screenFullSkill" class="screen screen-arena" hidden>
+        <div class="screen-intro">
+          <p class="eyebrow eyebrow--arena" data-i18n="fullskill.eyebrow">Arène classée</p>
+          <h2 class="screen-title screen-title--arena" data-i18n="nav.fullSkill">Full Skill</h2>
+          <p class="screen-sub muted" data-i18n="nav.fullSkillSub">Aucun avantage permanent. Seul ton skill compte.</p>
+        </div>
+        <div class="pact-section">
+          <h3 class="section-label" data-i18n="fullskill.pactsTitle">Choisis ton pacte</h3>
+          <div id="pactList" class="pact-list"></div>
+          <div id="pactDetail" class="pact-detail panel panel-glass" hidden></div>
+        </div>
+        <div class="panel panel-glass panel-arena-lb">
+          <h3 class="section-label" data-i18n="fullskill.leaderboard">Leaderboard local</h3>
+          <div id="fullSkillLb" class="fullskill-lb"></div>
+        </div>
+        <div class="arena-launch-wrap">
+          <button type="button" class="btn btn-arena-launch" id="btnFullSkillLaunch" disabled>
+            <span data-i18n="fullskill.launch">Lancer la partie</span>
+            <span class="badge-soon" data-i18n="nav.fullSkillSoon">Bientôt disponible</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- RUN -->
       <section id="screenRun" class="screen screen-run" hidden>
         <div class="run-shell">
           <div class="hud hud-run">
@@ -85,17 +145,17 @@
             </div>
             <div id="joystickRoot" class="joystick-root" hidden aria-label="Joystick"></div>
           </div>
-          <p class="hint" id="runHint">Joystick · Boss 5:00</p>
+          <p class="hint" id="runHint">Joystick · Boss de stage</p>
         </div>
         <div id="pauseOverlay" class="overlay overlay-run" hidden>
-          <div class="pause-card panel">
+          <div class="pause-card panel panel-glass">
             <h2 data-i18n="pause.title">Pause</h2>
             <button type="button" class="btn btn-primary btn-lg" id="btnResume" data-i18n="btn.resume">Reprendre</button>
             <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
           </div>
         </div>
         <div id="levelUpOverlay" class="overlay overlay-run" hidden>
-          <div class="levelup-card panel">
+          <div class="levelup-card panel panel-glass">
             <h2 data-i18n="levelup.title">Level up !</h2>
             <p class="muted levelup-sub" data-i18n="levelup.sub">Choisis 1 bonus pour cette run</p>
             <div id="levelUpChoices" class="levelup-choices"></div>
@@ -103,9 +163,49 @@
         </div>
       </section>
 
+      <!-- STAGE BRIEFING -->
+      <div id="stagePanel" class="overlay overlay-briefing" hidden>
+        <div class="briefing-panel panel panel-glass panel-adventure-brief">
+          <div class="boss-portrait-slot" id="bossPortraitSlot">
+            <span class="boss-portrait-glow" aria-hidden="true"></span>
+            <span class="boss-portrait-icon" id="bossPortraitIcon">?</span>
+            <span class="boss-portrait-label" data-i18n="briefing.portraitSoon">Portrait à venir</span>
+          </div>
+          <p class="eyebrow eyebrow--nature" data-i18n="briefing.stageBrief">Briefing de stage</p>
+          <h2 id="stagePanelName" class="briefing-title">Stage</h2>
+          <div class="briefing-grid">
+            <div class="briefing-stat">
+              <span data-i18n="adventure.boss">Boss</span>
+              <strong id="stagePanelBoss">—</strong>
+            </div>
+            <div class="briefing-stat">
+              <span data-i18n="briefing.difficulty">Difficulté</span>
+              <strong id="stagePanelDifficulty">—</strong>
+            </div>
+            <div class="briefing-stat">
+              <span data-i18n="briefing.reward">Récompense</span>
+              <strong id="stagePanelReward">—</strong>
+            </div>
+            <div class="briefing-stat">
+              <span data-i18n="adventure.bestScore">Meilleur score</span>
+              <strong id="stagePanelScore">—</strong>
+            </div>
+          </div>
+          <div class="boss-attacks-slot">
+            <h3 class="section-label" data-i18n="briefing.attacks">Attaques du boss</h3>
+            <ul id="stagePanelAttacks" class="attacks-list"></ul>
+          </div>
+          <div class="btn-stack">
+            <button type="button" class="btn btn-primary btn-lg btn-fight" id="btnStageLaunch" data-i18n="btn.fight">Combattre</button>
+            <button type="button" class="btn btn-ghost" id="btnStageClose" data-i18n="btn.back">Retour</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEFEAT -->
       <section id="screenGameOver" class="screen" hidden>
-        <div class="panel">
-          <h2 data-i18n="go.defeat">Défaite</h2>
+        <div class="panel panel-glass">
+          <h2 class="screen-title screen-title--defeat" data-i18n="go.defeat">Défaite</h2>
           <p class="stat-line" id="goStageLine"><span data-i18n="victory.stage">Stage</span>: <strong id="goStageName">—</strong></p>
           <p class="stat-line"><span data-i18n="hud.score">Score</span>: <strong id="goScore">0</strong></p>
           <p class="stat-line"><span data-i18n="go.ysEarned">YS gagnés</span>: <strong id="goYs">0</strong></p>
@@ -118,15 +218,17 @@
         </div>
       </section>
 
+      <!-- VICTORY -->
       <section id="screenVictory" class="screen" hidden>
-        <div class="panel panel-victory">
-          <h2 data-i18n="victory.title">Victoire !</h2>
+        <div class="panel panel-glass panel-victory">
+          <h2 class="screen-title screen-title--victory" data-i18n="victory.title">Victoire !</h2>
           <p class="stat-line"><span data-i18n="victory.stage">Stage</span>: <strong id="vicStageName">—</strong></p>
           <p class="stat-line"><span data-i18n="victory.boss">Boss vaincu</span>: <strong id="vicBossName">—</strong></p>
           <p class="stat-line"><span data-i18n="hud.score">Score</span>: <strong id="vicScore">0</strong></p>
           <p class="stat-line"><span data-i18n="hud.time">Temps</span>: <strong id="vicTime">0:00</strong></p>
           <p class="stat-line"><span data-i18n="go.ysEarned">YS gagnés</span>: <strong id="vicYs">0</strong></p>
           <p class="muted" id="vicRewardLabel"></p>
+          <p class="muted vic-ranked" id="vicRankedStatus" hidden></p>
           <div class="btn-stack">
             <button type="button" class="btn btn-primary" id="btnNextStage" data-i18n="btn.nextStage" hidden>Stage suivant</button>
             <button type="button" class="btn" id="btnVictoryRetry" data-i18n="btn.retry">Rejouer</button>
@@ -136,30 +238,47 @@
         </div>
       </section>
 
+      <!-- SHOP -->
       <section id="screenShop" class="screen" hidden>
-        <div class="panel">
-          <h2 data-i18n="shop.title">Améliorations permanentes</h2>
-          <p class="muted"><span data-i18n="shop.balance">Solde YS</span>: <strong data-ys-balance>0</strong></p>
+        <div class="screen-intro">
+          <h2 class="screen-title" data-i18n="shop.title">Améliorations permanentes</h2>
+          <p class="muted shop-balance-line">
+            <img class="ys-icon ys-icon--inline" src="assets/branding/logo/logo-ys-currency.svg" alt="" width="16" height="16" decoding="async" />
+            <span data-i18n="shop.balance">Solde YS</span>:
+            <strong data-ys-balance>0</strong>
+          </p>
+          <p class="muted shop-tip-hint" data-i18n="shop.tipHint">Survole ou maintiens une amélioration pour voir le détail.</p>
+        </div>
+        <div class="panel panel-glass">
           <div id="shopList" class="shop-list"></div>
-          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
         </div>
       </section>
 
+      <!-- SCORES -->
       <section id="screenScores" class="screen" hidden>
-        <div class="panel">
-          <h2 data-i18n="scores.title">Classements</h2>
+        <div class="screen-intro">
+          <h2 class="screen-title" data-i18n="scores.title">Classements</h2>
+        </div>
+        <div class="panel panel-glass">
           <div class="scores-tabs" role="tablist">
             <button type="button" class="btn btn-sm scores-tab is-active" data-scores-tab="adventure" data-i18n="scores.tabAdventure">Aventure</button>
             <button type="button" class="btn btn-sm scores-tab" data-scores-tab="fullskill" data-i18n="scores.tabFullSkill">Full Skill</button>
           </div>
+          <div class="scores-scope" role="tablist">
+            <button type="button" class="btn btn-sm scores-scope is-active" data-scores-scope="local" data-i18n="scores.scopeLocal">Local</button>
+            <button type="button" class="btn btn-sm scores-scope" data-scores-scope="global" data-i18n="scores.scopeGlobal">Global</button>
+          </div>
+          <div id="scoresStagePicker" class="scores-stage-picker" hidden></div>
           <div id="scoresList" class="scores-list"></div>
-          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
         </div>
       </section>
 
+      <!-- SETTINGS -->
       <section id="screenSettings" class="screen" hidden>
-        <div class="panel">
-          <h2 data-i18n="nav.settings">Réglages</h2>
+        <div class="screen-intro">
+          <h2 class="screen-title" data-i18n="nav.settings">Réglages</h2>
+        </div>
+        <div class="panel panel-glass">
           <label class="toggle-row">
             <span data-i18n="settings.sound">Effets sonores</span>
             <input type="checkbox" id="settingSound" checked />
@@ -179,12 +298,9 @@
               <option value="en">English</option>
             </select>
           </label>
-          <button type="button" class="btn" data-nav="home" data-i18n="btn.menu">Menu</button>
         </div>
       </section>
     </main>
-
-    <footer class="foot">© <a href="/">YSkill Studio</a> · <a href="/privacy.html">Confidentialité</a></footer>
   </div>
   <script type="module" src="./js/app.js"></script>
 </body>

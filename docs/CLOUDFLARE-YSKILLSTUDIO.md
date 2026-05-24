@@ -55,14 +55,14 @@ Pages project → **Custom domains** → **Set up a custom domain** :
 1. `yskillstudio.com`
 2. `www.yskillstudio.com`
 
-Cloudflare crée les enregistrements DNS automatiquement (domaine déjà sur Cloudflare).
-
-Vérifier dans **DNS** → **Records** :
+Cloudflare crée parfois les enregistrements DNS automatiquement. Si le statut Pages reste **pending** avec *CNAME record not set*, ajoute-les à la main :
 
 | Type | Name | Content | Proxy |
 |------|------|---------|-------|
-| CNAME | `@` ou A flatten | Pages | Proxied |
-| CNAME | `www` | `yskillstudio.com` ou Pages | Proxied |
+| CNAME | `@` | `yskillstudio.pages.dev` | Proxied |
+| CNAME | `www` | `yskillstudio.pages.dev` | Proxied |
+
+> Supprimer tout **Workers Custom Domain** sur `yskillstudio.com` (ex. worker template « Hello world ») avant de lier Pages — sinon conflit de route.
 
 Attendre 5–30 min → HTTPS actif.
 

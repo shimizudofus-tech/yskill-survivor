@@ -1,0 +1,4 @@
+SESSION_SECRET=change-me-local-dev-only
+PUBLIC_API_URL=http://localhost:8787
+PUBLIC_PLAY_URL=http://localhost:5173/play/
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173

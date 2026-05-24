@@ -25,6 +25,7 @@ import {
 import { getBossDefinition } from "./stages.js";
 import { HeroSprite } from "./hero-sprite.js";
 import { SkillManager } from "./skill-manager.js";
+import { VirtualJoystick, prefersTouchControls } from "./joystick.js";
 import { getSettings } from "./storage.js";
 import { Sfx } from "./audio.js";
 
@@ -92,6 +93,8 @@ export class YSkillSurvivorGame {
     this.tPortalOpen = options.tPortalOpen || (() => "PORTAIL DU BOSS OUVERT");
     this.getMoveVector = options.getMoveVector || null;
     this.useCanvasTouch = options.useCanvasTouch !== false;
+    this.enableVirtualJoystick =
+      options.enableVirtualJoystick ?? (options.getMoveVector ? false : prefersTouchControls());
     this.onImpact = options.onImpact || null;
     this.onLevelUp = options.onLevelUp || null;
     this.metaEffects = options.effects || {};
@@ -160,6 +163,13 @@ export class YSkillSurvivorGame {
     this.heroSprite = new HeroSprite(heroConfig, this.assetManager);
     void this.heroSprite.load().catch(() => {});
 
+    this.virtualJoystick =
+      options.virtualJoystick instanceof VirtualJoystick
+        ? options.virtualJoystick
+        : this.enableVirtualJoystick
+          ? new VirtualJoystick(this.canvas, { maxRadius: 50 })
+          : null;
+
     this._bindInput();
     this._resize();
   }
@@ -179,47 +189,6 @@ export class YSkillSurvivorGame {
     this._onKeyUp = (e) => this.keys.delete(e.key.toLowerCase());
     window.addEventListener("keydown", this._onKeyDown);
     window.addEventListener("keyup", this._onKeyUp);
-
-    this._touchId = null;
-    this._touchOrigin = null;
-    if (this.useCanvasTouch) {
-      this._onTouchStart = (e) => {
-        if (this.getMoveVector || this._touchId != null) return;
-        e.preventDefault();
-        const t = e.changedTouches[0];
-        if (!t) return;
-        this._touchId = t.identifier;
-        const rect = this.canvas.getBoundingClientRect();
-        this._touchOrigin = { x: t.clientX - rect.left, y: t.clientY - rect.top };
-      };
-      this._onTouchMove = (e) => {
-        if (this.getMoveVector) return;
-        e.preventDefault();
-        if (this._touchId == null || !this._touchOrigin) return;
-        const t = [...e.changedTouches].find((x) => x.identifier === this._touchId);
-        if (!t) return;
-        const rect = this.canvas.getBoundingClientRect();
-        const dx = t.clientX - rect.left - this._touchOrigin.x;
-        const dy = t.clientY - rect.top - this._touchOrigin.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const max = 52;
-        const scale = Math.min(max, len) / len;
-        const speed = 220 * (this.combatEffects.moveSpeedMult || 1);
-        this.player.vx = (dx / len) * scale * speed;
-        this.player.vy = (dy / len) * scale * speed;
-      };
-      this._onTouchEnd = (e) => {
-        const t = [...e.changedTouches].find((x) => x.identifier === this._touchId);
-        if (!t) return;
-        this._touchId = null;
-        this._touchOrigin = null;
-        this.player.vx = 0;
-        this.player.vy = 0;
-      };
-      this.canvas.addEventListener("touchstart", this._onTouchStart, { passive: false });
-      this.canvas.addEventListener("touchmove", this._onTouchMove, { passive: false });
-      this.canvas.addEventListener("touchend", this._onTouchEnd);
-    }
   }
 
   _movementFromKeys() {
@@ -410,11 +379,8 @@ export class YSkillSurvivorGame {
     this.sfx.destroy();
     window.removeEventListener("keydown", this._onKeyDown);
     window.removeEventListener("keyup", this._onKeyUp);
-    if (this.useCanvasTouch && this._onTouchStart) {
-      this.canvas.removeEventListener("touchstart", this._onTouchStart);
-      this.canvas.removeEventListener("touchmove", this._onTouchMove);
-      this.canvas.removeEventListener("touchend", this._onTouchEnd);
-    }
+    this.virtualJoystick?.destroy();
+    this.virtualJoystick = null;
   }
 
   _loop(now) {
@@ -453,18 +419,18 @@ export class YSkillSurvivorGame {
     const diff = difficultyAt(sec, this.difficultyMult);
     const eff = this.combatEffects;
 
-    const stick = this.getMoveVector?.();
+    const stick = this.virtualJoystick?.getVector() ?? this.getMoveVector?.();
     const stickActive = stick && (Math.abs(stick.x) > 0.001 || Math.abs(stick.y) > 0.001);
     const speed = (175 + Math.min(40, sec * 0.4)) * (eff.moveSpeedMult || 1);
 
     if (stickActive) {
       this.player.vx = stick.x * speed;
       this.player.vy = stick.y * speed;
-    } else if (this._touchId == null) {
+    } else {
       const { vx, vy } = this._movementFromKeys();
       const len = Math.hypot(vx, vy) || 1;
-      this.player.vx = (vx / len) * speed;
-      this.player.vy = (vy / len) * speed;
+      this.player.vx = len > 0 ? (vx / len) * speed : 0;
+      this.player.vy = len > 0 ? (vy / len) * speed : 0;
     }
 
     const ox = this.player.x;
@@ -1150,6 +1116,7 @@ export class YSkillSurvivorGame {
       this._drawScreenOverlay(ctx);
     }
 
+    this.virtualJoystick?.draw(ctx);
     ctx.restore();
   }
 

@@ -21,7 +21,7 @@ import { PACTS } from "./pacts.js";
 import { YSkillSurvivorGame, formatTime } from "./game.js";
 import { Sfx } from "./audio.js";
 import { assets, AssetManager } from "./asset-manager.js";
-import { VirtualJoystick, prefersTouchControls } from "./joystick.js";
+import { prefersTouchControls } from "./joystick.js";
 import {
   initPlatform,
   lockDocumentScroll,
@@ -82,7 +82,6 @@ const btnRevive = document.getElementById("btnRevive");
 const pauseOverlay = document.getElementById("pauseOverlay");
 const levelUpOverlay = document.getElementById("levelUpOverlay");
 const levelUpChoices = document.getElementById("levelUpChoices");
-const joystickRoot = document.getElementById("joystickRoot");
 const runHint = document.getElementById("runHint");
 const adventurePath = document.getElementById("adventurePath");
 const stagePanel = document.getElementById("stagePanel");
@@ -120,7 +119,6 @@ const HERO_ORDER = ["hero_male", "hero_female"];
 
 let game = null;
 let sfx = null;
-let joystick = null;
 let currentRunConfig = null;
 let selectedStageId = null;
 let runSettled = false;
@@ -421,19 +419,11 @@ function resumeRun() {
 }
 
 function destroyJoystick() {
-  if (joystick) {
-    joystick.destroy();
-    joystick = null;
-  }
-  if (joystickRoot) joystickRoot.hidden = true;
+  /* Canvas joystick is owned by YSkillSurvivorGame.virtualJoystick */
 }
 
 function setupJoystick() {
-  destroyJoystick();
-  if (!useTouchLayout() || !joystickRoot) return null;
-  joystickRoot.hidden = false;
-  joystick = new VirtualJoystick(joystickRoot, { size: 136, knobSize: 54 });
-  return joystick;
+  return null;
 }
 
 function initLocale() {
@@ -704,7 +694,6 @@ async function startAdventureRunAsync(stageId) {
     await new Promise((r) => setTimeout(r, 400));
   }
 
-  const stick = setupJoystick();
   sfx = new Sfx(settings.sound);
   const effects = currentRunConfig.allowPermanentUpgrades ? getUpgradeEffects() : {};
 
@@ -715,8 +704,7 @@ async function startAdventureRunAsync(stageId) {
     assetManager: assets,
     sfx,
     sound: settings.sound,
-    useCanvasTouch: !stick,
-    getMoveVector: stick ? () => stick.getVector() : null,
+    enableVirtualJoystick: useTouchLayout(),
     onImpact: (style) => triggerHaptic(style),
     tBoss: () => t("boss.incoming"),
     tPortalSealed: () => t("adventure.portalSealed"),
@@ -865,9 +853,6 @@ function bindGameOver() {
   btnRevive.addEventListener("click", () => {
     showRewardedAd(() => {
       if (game?.revive()) {
-        setupJoystick();
-        game.useCanvasTouch = !joystick;
-        game.getMoveVector = joystick ? () => joystick.getVector() : null;
         showScreen("run");
         lockDocumentScroll(true);
         game.onGameOver = (payload) => finishDefeat(payload);

@@ -377,9 +377,12 @@ Collisions : `www/play/js/adventure-world.js` → `STAGE_01_WORLD` · debug **F2
 Quand un asset passe en `READY` ou `INTEGRATED` :
 
 1. Placer le fichier dans **`www/play/assets/...`** (chemin runtime).
-2. Mettre à jour **ce manifeste** (`www/assets/ASSETS_MANIFEST.md`).
-3. Référencer dans le code si nouveau chemin (`hero-config.js`, `adventure-world.js`, etc.).
-4. `npm run deploy` pour Cloudflare Pages.
+2. Ajouter son chemin dans **`www/play/js/runtime-assets.js`** (catalogue du preloader).
+3. Mettre à jour **ce manifeste** (`www/assets/ASSETS_MANIFEST.md`).
+4. Référencer dans le code si nouveau chemin (`hero-config.js`, `adventure-world.js`, etc.).
+5. `npm run deploy` pour Cloudflare Pages.
+
+**Preloader :** `www/play/js/asset-manager.js` — singleton `assets`, barre de progression canvas avant chaque run Aventure.
 
 Prompts héros IA : `docs/LEONARDO-HERO-PROMPTS.md`
 

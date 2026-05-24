@@ -4,7 +4,9 @@ const MOVEMENT_CLIPS = ["idle", "walkDown", "walkSide", "walkUp"];
 const IDLE_SPEED = 8;
 const WALK_SPEED = 14;
 
-function loadImage(src) {
+function loadImage(src, assetManager = null) {
+  const cached = assetManager?.getImage(src);
+  if (cached) return Promise.resolve({ src, img: cached });
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.decoding = "async";
@@ -15,8 +17,9 @@ function loadImage(src) {
 }
 
 export class HeroSprite {
-  constructor(config = ACTIVE_HERO_CONFIG) {
+  constructor(config = ACTIVE_HERO_CONFIG, assetManager = null) {
     this.config = config;
+    this.assetManager = assetManager;
     /** @type {Map<string, HTMLImageElement>} */
     this.frames = new Map();
     this.ready = false;
@@ -32,7 +35,7 @@ export class HeroSprite {
     for (const clip of MOVEMENT_CLIPS) {
       for (const p of this.config.animations[clip] || []) paths.add(p);
     }
-    return Promise.allSettled([...paths].map(loadImage)).then((results) => {
+    return Promise.allSettled([...paths].map((p) => loadImage(p, this.assetManager))).then((results) => {
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
         const { src, img } = r.value;

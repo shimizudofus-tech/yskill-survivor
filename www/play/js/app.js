@@ -20,6 +20,7 @@ import { getStageById, getNextStageId, getBossDefinition } from "./stages.js";
 import { PACTS } from "./pacts.js";
 import { YSkillSurvivorGame, formatTime } from "./game.js";
 import { Sfx } from "./audio.js";
+import { assets, AssetManager } from "./asset-manager.js";
 import { VirtualJoystick, prefersTouchControls } from "./joystick.js";
 import {
   initPlatform,
@@ -681,6 +682,28 @@ async function startAdventureRunAsync(stageId) {
   }
   destroyJoystick();
   const settings = getSettings();
+  const heroId = settings.heroId || "hero_male";
+
+  showScreen("run");
+  pauseOverlay.hidden = true;
+  hideLevelUp();
+  lockDocumentScroll(true);
+
+  const loadCtx = canvas.getContext("2d");
+  const loadLabel = t("loading.assets");
+  try {
+    await assets.preloadForRun({ stageId, heroId }, {
+      onProgress: (p) => AssetManager.drawProgress(loadCtx, p, loadLabel),
+    });
+    await assets.loadAudioCatalog(undefined, {
+      onProgress: (p) => AssetManager.drawProgress(loadCtx, p * 0.2 + 0.8, loadLabel),
+    });
+  } catch (err) {
+    console.warn("[assets] preload run", err);
+    AssetManager.drawProgress(loadCtx, 1, t("loading.assetsFallback"));
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
   const stick = setupJoystick();
   sfx = new Sfx(settings.sound);
   const effects = currentRunConfig.allowPermanentUpgrades ? getUpgradeEffects() : {};
@@ -689,6 +712,7 @@ async function startAdventureRunAsync(stageId) {
     seed,
     effects,
     runConfig: currentRunConfig,
+    assetManager: assets,
     sfx,
     sound: settings.sound,
     useCanvasTouch: !stick,
@@ -711,10 +735,8 @@ async function startAdventureRunAsync(stageId) {
   runPaused = false;
   pauseOverlay.hidden = true;
   hideLevelUp();
-  showScreen("run");
   updateRunHint();
   game.start();
-  lockDocumentScroll(true);
 }
 
 function settleRunOnce(fn) {
@@ -1163,6 +1185,7 @@ async function boot() {
   renderHomeHeroPick();
   showScreen("home");
   void refreshAuthUser();
+  void assets.preloadCore().catch((err) => console.warn("[assets] preload core", err));
 
   await configureNativeChrome();
   await initPlatform({

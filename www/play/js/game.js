@@ -8,7 +8,6 @@ import {
   BOSS_BONUS,
   ENEMY_TYPES,
   PALETTE,
-  RUN_UPGRADE_POOL,
   LEVEL_UP_INTERVAL_MS,
   ACTIVE_HERO_CONFIG,
   PLAYABLE_HEROES,
@@ -25,6 +24,7 @@ import {
 } from "./adventure-world.js";
 import { getBossDefinition } from "./stages.js";
 import { HeroSprite } from "./hero-sprite.js";
+import { SkillManager } from "./skill-manager.js";
 import { getSettings } from "./storage.js";
 import { Sfx } from "./audio.js";
 
@@ -82,6 +82,7 @@ export class YSkillSurvivorGame {
     this.ctx = canvas.getContext("2d");
     this.seed = (options.seed >>> 0) || (Date.now() & 0xffffffff);
     this.rand = mulberry32(this.seed);
+    this.skillManager = new SkillManager({ rand: this.rand });
     this.sfx = options.sfx instanceof Sfx ? options.sfx : new Sfx(options.sound !== false);
     this.onState = options.onState || (() => {});
     this.onGameOver = options.onGameOver || (() => {});
@@ -107,19 +108,19 @@ export class YSkillSurvivorGame {
       : null;
     this._bossArenaUnlocked = false;
     this._bossFightLocked = false;
+    this.assetManager = options.assetManager || null;
     this._bossPortalOpenBanner = null;
     this._collisionDebug = false;
     this._bgImage = null;
     this._bgImageReady = false;
     if (this.worldConfig?.backgroundAsset) {
-      this._loadBackground(this.worldConfig.backgroundAsset);
+      this._applyBackground(this.worldConfig.backgroundAsset);
     }
     this.difficultyMult = this.stageConfig?.difficultyMultiplier ?? 1;
     this.bossAtMs = this.stageConfig?.durationBeforeBossMs ?? 5 * 60 * 1000;
     this.bossWarnMs = Math.max(0, this.bossAtMs - 2000);
     this.allowRevive = this.runConfig.allowRevive !== false;
     this.combatEffects = { ...this.metaEffects };
-    this.runLevels = {};
     this.levelUpPending = false;
     this._nextLevelUpMs = LEVEL_UP_INTERVAL_MS;
     this.maxHp = 1;
@@ -156,7 +157,7 @@ export class YSkillSurvivorGame {
     this.keys = new Set();
     const heroId = getSettings().heroId || "hero_male";
     const heroConfig = PLAYABLE_HEROES[heroId] || ACTIVE_HERO_CONFIG;
-    this.heroSprite = new HeroSprite(heroConfig);
+    this.heroSprite = new HeroSprite(heroConfig, this.assetManager);
     void this.heroSprite.load().catch(() => {});
 
     this._bindInput();
@@ -232,6 +233,16 @@ export class YSkillSurvivorGame {
     return { vx, vy };
   }
 
+  _applyBackground(path) {
+    const cached = this.assetManager?.getImage(path);
+    if (cached) {
+      this._bgImage = cached;
+      this._bgImageReady = true;
+      return;
+    }
+    this._loadBackground(path);
+  }
+
   _loadBackground(path) {
     const img = new Image();
     img.decoding = "async";
@@ -260,41 +271,19 @@ export class YSkillSurvivorGame {
   }
 
   _runLevel(id) {
-    return Math.max(0, Math.floor(Number(this.runLevels[id]) || 0));
+    return this.skillManager.getLevel(id);
   }
 
   _recomputeCombatEffects() {
-    const m = this.metaEffects;
-    const multishotHits = (m.multishotHits || 1) + this._runLevel("runPierce");
-    this.combatEffects = {
-      fireRateMult: (m.fireRateMult || 1) * Math.pow(1.18, this._runLevel("runFire")),
-      bulletDamage: (m.bulletDamage || 1) + this._runLevel("runDamage"),
-      multishotHits,
-      moveSpeedMult: (m.moveSpeedMult || 1) * Math.pow(1.12, this._runLevel("runSpeed")),
-      bulletSpeedMult: m.bulletSpeedMult || 1,
-      pickupRadius: (m.pickupRadius || 18) + this._runLevel("runMagnet") * 10,
-      pickupScoreMult: m.pickupScoreMult || 1,
-      invulnMs: m.invulnMs || 900,
-    };
+    this.combatEffects = this.skillManager.computeCombatEffects(this.metaEffects);
   }
 
   _totalRunPicks() {
-    return Object.values(this.runLevels).reduce(
-      (sum, n) => sum + Math.max(0, Math.floor(Number(n) || 0)),
-      0,
-    );
+    return this.skillManager.totalPicks();
   }
 
   _rollLevelUpChoices() {
-    const available = RUN_UPGRADE_POOL.filter((u) => this._runLevel(u.id) < u.max);
-    if (!available.length) return [];
-    const pool = [...available];
-    const picks = [];
-    while (picks.length < 3 && pool.length) {
-      const idx = Math.floor(this.rand() * pool.length);
-      picks.push(pool.splice(idx, 1)[0]);
-    }
-    return picks;
+    return this.skillManager.generateLevelUpOptions(3);
   }
 
   _triggerLevelUp() {
@@ -315,12 +304,15 @@ export class YSkillSurvivorGame {
 
   pickRunUpgrade(id) {
     if (!this.levelUpPending) return false;
-    const def = RUN_UPGRADE_POOL.find((u) => u.id === id);
+    const def = this.skillManager.getDefinition(id);
     if (!def || this._runLevel(id) >= def.max) return false;
-    this.runLevels[id] = this._runLevel(id) + 1;
-    if (id === "runVitality") {
-      this.maxHp += 1;
-      this.hp = Math.min(this.maxHp, this.hp + 1);
+    const result = this.skillManager.applyUpgrade(id, { validatePending: true });
+    if (!result.ok) return false;
+    if (result.maxHpDelta) {
+      this.maxHp += result.maxHpDelta;
+      this.hp = Math.min(this.maxHp, this.hp + (result.heal || 0));
+    } else if (result.heal) {
+      this.hp = Math.min(this.maxHp, this.hp + result.heal);
     }
     this._recomputeCombatEffects();
     this.levelUpPending = false;
@@ -355,7 +347,7 @@ export class YSkillSurvivorGame {
     this.hp = 1;
     this.maxHp = 1;
     this.revived = false;
-    this.runLevels = {};
+    this.skillManager.reset();
     this.levelUpPending = false;
     this._nextLevelUpMs = LEVEL_UP_INTERVAL_MS;
     this._recomputeCombatEffects();

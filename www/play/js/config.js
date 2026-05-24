@@ -37,15 +37,8 @@ export const BOSS_BONUS = 1000;
 export const MAX_LOCAL_SCORES = 10;
 export const LEVEL_UP_INTERVAL_MS = 45000;
 
-/** Améliorations temporaires pendant une run (choix 1/3 toutes les 45 s). */
-export const RUN_UPGRADE_POOL = [
-  { id: "runFire", max: 8 },
-  { id: "runDamage", max: 10 },
-  { id: "runSpeed", max: 6 },
-  { id: "runMagnet", max: 6 },
-  { id: "runPierce", max: 5 },
-  { id: "runVitality", max: 2 },
-];
+/** @deprecated Import from skills-config.js — re-export for compatibility. */
+export { RUN_UPGRADE_POOL } from "./skills-config.js";
 
 export const UPGRADE_CATALOG = [
   { id: "attackSpeed", baseCost: 20 },

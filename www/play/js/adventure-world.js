@@ -7,24 +7,29 @@ function dist(ax, ay, bx, by) {
   return Math.hypot(ax - bx, ay - by);
 }
 
-/** Stage 1 — Clairière Runique: aligned to stage_01_gameplay_map.png (720×1280). */
+/** Stage 1 — Clairière Runique: aligned to stage_01_gameplay_map.png (720×1280).
+ *  Wide open layout: rects for paths, a big circle for the main clearing, and a
+ *  circular boss arena up top. No collisions on inner decorations.
+ */
 export const STAGE_01_WORLD = {
   id: 1,
   worldWidth: 720,
   worldHeight: 1280,
-  playerSpawn: { x: 360, y: 1210 },
-  bossArena: { x: 360, y: 180, radius: 220 },
-  bossPortalBarrier: { y: 418, xMin: 278, xMax: 442 },
+  playerSpawn: { x: 360, y: 1200 },
+  bossArena: { x: 360, y: 200, radius: 210 },
+  bossPortalBarrier: { y: 410, xMin: 280, xMax: 440 },
   bossUnlock: {
     minSurvivalMs: 45_000,
     minKills: 22,
     enterRadius: 300,
   },
   walkableRects: [
-    { x: 200, y: 1060, w: 320, h: 220, zone: "spawn" },
-    { x: 275, y: 820, w: 170, h: 290, zone: "path_lower" },
-    { x: 50, y: 490, w: 620, h: 410, zone: "clearing" },
-    { x: 285, y: 405, w: 150, h: 130, zone: "runes" },
+    { x: 180, y: 1080, w: 360, h: 200, zone: "spawn" },
+    { x: 175, y: 900, w: 370, h: 210, zone: "lower_link" },
+    { x: 230, y: 380, w: 260, h: 130, zone: "boss_approach" },
+  ],
+  walkableCircles: [
+    { x: 360, y: 760, radius: 260, zone: "main_clearing" },
   ],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
@@ -57,7 +62,13 @@ export function defaultAdventureWorld(stageId) {
 
 export function getAdventureWorldConfig(stageId) {
   const id = Number(stageId);
-  if (id === 1) return { ...STAGE_01_WORLD, walkableRects: STAGE_01_WORLD.walkableRects.map((r) => ({ ...r })) };
+  if (id === 1) {
+    return {
+      ...STAGE_01_WORLD,
+      walkableRects: STAGE_01_WORLD.walkableRects.map((r) => ({ ...r })),
+      walkableCircles: (STAGE_01_WORLD.walkableCircles || []).map((c) => ({ ...c })),
+    };
+  }
   return defaultAdventureWorld(id);
 }
 
@@ -69,7 +80,7 @@ export function isInsideBossArena(world, x, y, margin = 0) {
 
 export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } = {}) {
   if (!world) return true;
-  const { walkableRects, bossArena } = world;
+  const { walkableRects, walkableCircles, bossArena } = world;
   for (const r of walkableRects || []) {
     if (
       x >= r.x + margin &&
@@ -79,6 +90,9 @@ export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } =
     ) {
       return true;
     }
+  }
+  for (const c of walkableCircles || []) {
+    if (dist(x, y, c.x, c.y) <= c.radius - margin) return true;
   }
   if (allowBossArena && bossArena && isInsideBossArena(world, x, y, margin)) {
     return true;
@@ -144,13 +158,26 @@ export function constrainMove(
 }
 
 export function randomWalkablePoint(world, rand, margin = 24) {
-  if (!world?.walkableRects?.length) {
+  const rects = world?.walkableRects || [];
+  const circles = world?.walkableCircles || [];
+  if (!rects.length && !circles.length) {
     return { x: world?.worldWidth / 2 || 180, y: world?.worldHeight / 2 || 320 };
   }
+  const total = rects.length + circles.length;
   for (let attempt = 0; attempt < 40; attempt++) {
-    const rect = world.walkableRects[Math.floor(rand() * world.walkableRects.length)];
-    const x = rect.x + margin + rand() * Math.max(1, rect.w - margin * 2);
-    const y = rect.y + margin + rand() * Math.max(1, rect.h - margin * 2);
+    const pick = Math.floor(rand() * total);
+    let x, y;
+    if (pick < rects.length) {
+      const rect = rects[pick];
+      x = rect.x + margin + rand() * Math.max(1, rect.w - margin * 2);
+      y = rect.y + margin + rand() * Math.max(1, rect.h - margin * 2);
+    } else {
+      const c = circles[pick - rects.length];
+      const a = rand() * Math.PI * 2;
+      const r = rand() * Math.max(1, c.radius - margin);
+      x = c.x + Math.cos(a) * r;
+      y = c.y + Math.sin(a) * r;
+    }
     if (isWalkable(world, x, y, margin)) return { x, y };
   }
   return { ...world.playerSpawn };

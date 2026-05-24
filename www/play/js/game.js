@@ -472,7 +472,7 @@ export class YSkillSurvivorGame {
       this.player.y = clamp(ny, PLAYER_R, this.worldH - PLAYER_R);
     }
 
-    if (!this._bossSpawned) {
+    if (!this._bossSpawned && !this._bossFightLocked) {
       this.spawnTimer -= dt;
       const spawnEvery = Math.max(220, 1100 / diff);
       const maxEnemies = Math.min(50, Math.floor(14 + diff * 10));
@@ -1024,7 +1024,7 @@ export class YSkillSurvivorGame {
     }
 
     if (this.running) {
-      ctx.fillStyle = "rgba(4, 8, 12, 0.2)";
+      ctx.fillStyle = "rgba(3, 8, 10, 0.18)";
       ctx.fillRect(0, 0, w, h);
     }
   }
@@ -1099,6 +1099,22 @@ export class YSkillSurvivorGame {
       ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
       ctx.textAlign = "left";
       ctx.fillText(r.zone || "zone", r.x + 4, r.y + 12);
+    }
+
+    for (const c of this.worldConfig?.walkableCircles || []) {
+      ctx.fillStyle = zoneColors[c.zone] || "rgba(34, 197, 94, 0.22)";
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.textAlign = "center";
+      ctx.fillText(c.zone || "circle", c.x, c.y - c.radius + 12);
     }
 
     const ba = this.worldConfig?.bossArena;
@@ -1251,12 +1267,19 @@ export class YSkillSurvivorGame {
   _drawScreenOverlay(ctx) {
     if (this._collisionDebug && this.worldConfig) {
       const cam = this.camera;
+      const u = this.worldConfig.bossUnlock || {};
+      const remainSec = Math.max(0, Math.ceil(((u.minSurvivalMs || 0) - this.elapsedMs) / 1000));
+      const remainKills = Math.max(0, (u.minKills || 0) - this.kills);
+      let portalState = "sealed";
+      if (this._bossFightLocked) portalState = "boss fight";
+      else if (this._bossArenaUnlocked) portalState = "open";
       const lines = [
         "DEBUG COLLISIONS (F2)",
         `Joueur: ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`,
         cam ? `Caméra: ${Math.round(cam.x)}, ${Math.round(cam.y)}` : "",
-        `Portail boss: ${this._bossArenaUnlocked ? "OUVERT" : "VERROUILLÉ"}`,
-        this._bossFightLocked ? "Combat boss: VERROUILLÉ" : "Combat boss: libre",
+        `Portail: ${portalState}`,
+        `Kills: ${this.kills} (besoin -${remainKills})`,
+        `Temps avant ouverture: ${remainSec}s`,
       ].filter(Boolean);
       ctx.font = "11px monospace";
       ctx.textAlign = "left";

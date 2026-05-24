@@ -12,7 +12,7 @@ export const STAGE_01_WORLD = {
   id: 1,
   worldWidth: 720,
   worldHeight: 1280,
-  playerSpawn: { x: 360, y: 1195 },
+  playerSpawn: { x: 360, y: 1210 },
   bossArena: { x: 360, y: 180, radius: 220 },
   bossPortalBarrier: { y: 418, xMin: 278, xMax: 442 },
   bossUnlock: {
@@ -21,10 +21,10 @@ export const STAGE_01_WORLD = {
     enterRadius: 300,
   },
   walkableRects: [
-    { x: 210, y: 1095, w: 300, h: 185, zone: "spawn" },
-    { x: 285, y: 865, w: 150, h: 240, zone: "path_lower" },
-    { x: 55, y: 505, w: 610, h: 385, zone: "clearing" },
-    { x: 295, y: 418, w: 130, h: 100, zone: "runes" },
+    { x: 200, y: 1060, w: 320, h: 220, zone: "spawn" },
+    { x: 275, y: 820, w: 170, h: 290, zone: "path_lower" },
+    { x: 50, y: 490, w: 620, h: 410, zone: "clearing" },
+    { x: 285, y: 405, w: 150, h: 130, zone: "runes" },
   ],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",

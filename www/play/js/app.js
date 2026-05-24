@@ -692,6 +692,8 @@ async function startAdventureRunAsync(stageId) {
     getMoveVector: stick ? () => stick.getVector() : null,
     onImpact: (style) => triggerHaptic(style),
     tBoss: () => t("boss.incoming"),
+    tPortalSealed: () => t("adventure.portalSealed"),
+    tPortalOpen: () => t("adventure.portalOpen"),
     onLevelUp: ({ choices }) => showLevelUp(choices),
     onState: (s) => {
       hudScore.textContent = String(s.score);

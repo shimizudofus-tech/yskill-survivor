@@ -7,23 +7,24 @@ function dist(ax, ay, bx, by) {
   return Math.hypot(ax - bx, ay - by);
 }
 
-/** Stage 1 — Clairière Runique: vertical forest corridor. */
+/** Stage 1 — Clairière Runique: aligned to stage_01_gameplay_map.png (720×1280). */
 export const STAGE_01_WORLD = {
   id: 1,
   worldWidth: 720,
   worldHeight: 1280,
-  playerSpawn: { x: 360, y: 1180 },
+  playerSpawn: { x: 360, y: 1195 },
   bossArena: { x: 360, y: 180, radius: 220 },
+  bossPortalBarrier: { y: 418, xMin: 278, xMax: 442 },
   bossUnlock: {
     minSurvivalMs: 45_000,
     minKills: 22,
     enterRadius: 300,
   },
   walkableRects: [
-    { x: 200, y: 1060, w: 320, h: 220, zone: "spawn" },
-    { x: 270, y: 900, w: 180, h: 180, zone: "path_lower" },
-    { x: 90, y: 520, w: 540, h: 400, zone: "clearing" },
-    { x: 270, y: 340, w: 180, h: 200, zone: "runes" },
+    { x: 210, y: 1095, w: 300, h: 185, zone: "spawn" },
+    { x: 285, y: 865, w: 150, h: 240, zone: "path_lower" },
+    { x: 55, y: 505, w: 610, h: 385, zone: "clearing" },
+    { x: 295, y: 418, w: 130, h: 100, zone: "runes" },
   ],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
@@ -60,12 +61,15 @@ export function getAdventureWorldConfig(stageId) {
   return defaultAdventureWorld(id);
 }
 
-export function isWalkable(world, x, y, margin = 0) {
+export function isInsideBossArena(world, x, y, margin = 0) {
+  const ba = world?.bossArena;
+  if (!ba) return false;
+  return dist(x, y, ba.x, ba.y) <= ba.radius - margin;
+}
+
+export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } = {}) {
   if (!world) return true;
   const { walkableRects, bossArena } = world;
-  if (bossArena && dist(x, y, bossArena.x, bossArena.y) <= bossArena.radius - margin) {
-    return true;
-  }
   for (const r of walkableRects || []) {
     if (
       x >= r.x + margin &&
@@ -76,7 +80,32 @@ export function isWalkable(world, x, y, margin = 0) {
       return true;
     }
   }
+  if (allowBossArena && bossArena && isInsideBossArena(world, x, y, margin)) {
+    return true;
+  }
   return false;
+}
+
+export function crossesBossPortalBarrier(world, ox, oy, nx, ny, entityR, unlocked) {
+  if (unlocked || !world?.bossPortalBarrier) return false;
+  const b = world.bossPortalBarrier;
+  const inX = (x) => x >= b.xMin - entityR && x <= b.xMax + entityR;
+  if (!inX(ox) && !inX(nx)) return false;
+  const line = b.y;
+  const wasSouth = oy >= line - entityR * 0.5;
+  const nowNorth = ny < line + entityR * 0.5;
+  return wasSouth && nowNorth;
+}
+
+export function playerInsideBossArena(world, px, py, margin = 12) {
+  return isInsideBossArena(world, px, py, margin);
+}
+
+export function playerNearBossPortal(world, px, py, maxDist = 140) {
+  const b = world?.bossPortalBarrier;
+  if (!b) return false;
+  const cx = (b.xMin + b.xMax) / 2;
+  return dist(px, py, cx, b.y) <= maxDist;
 }
 
 export function clampToBossArena(world, x, y, entityR) {
@@ -91,14 +120,26 @@ export function clampToBossArena(world, x, y, entityR) {
   };
 }
 
-export function constrainMove(world, ox, oy, nx, ny, r, { lockBossArena = false } = {}) {
+export function constrainMove(
+  world,
+  ox,
+  oy,
+  nx,
+  ny,
+  r,
+  { lockBossArena = false, bossArenaUnlocked = false } = {},
+) {
   if (!world) return { x: nx, y: ny };
   if (lockBossArena && world.bossArena) {
     return clampToBossArena(world, nx, ny, r);
   }
-  if (isWalkable(world, nx, ny, r)) return { x: nx, y: ny };
-  if (isWalkable(world, nx, oy, r)) return { x: nx, y: oy };
-  if (isWalkable(world, ox, ny, r)) return { x: ox, y: ny };
+  if (crossesBossPortalBarrier(world, ox, oy, nx, ny, r, bossArenaUnlocked)) {
+    return { x: ox, y: oy };
+  }
+  const walkOpts = { allowBossArena: bossArenaUnlocked };
+  if (isWalkable(world, nx, ny, r, walkOpts)) return { x: nx, y: ny };
+  if (isWalkable(world, nx, oy, r, walkOpts)) return { x: nx, y: oy };
+  if (isWalkable(world, ox, ny, r, walkOpts)) return { x: ox, y: ny };
   return { x: ox, y: oy };
 }
 

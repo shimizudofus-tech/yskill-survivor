@@ -18,7 +18,8 @@ import {
   isWalkable,
   randomWalkablePoint,
   randomSpawnNearPlayer,
-  playerNearBossArena,
+  playerInsideBossArena,
+  playerNearBossPortal,
   canUnlockBoss,
   clampToBossArena,
 } from "./adventure-world.js";
@@ -48,6 +49,11 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
+function isDevEnvironment() {
+  const host = globalThis.location?.hostname ?? "";
+  return host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+}
+
 function formatTime(ms) {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
@@ -65,6 +71,8 @@ export class YSkillSurvivorGame {
     this.onGameOver = options.onGameOver || (() => {});
     this.onVictory = options.onVictory || (() => {});
     this.tBoss = options.tBoss || (() => "BOSS");
+    this.tPortalSealed = options.tPortalSealed || (() => "Portail scellé — Survis 45 s ou élimine 22 ennemis");
+    this.tPortalOpen = options.tPortalOpen || (() => "PORTAIL DU BOSS OUVERT");
     this.getMoveVector = options.getMoveVector || null;
     this.useCanvasTouch = options.useCanvasTouch !== false;
     this.onImpact = options.onImpact || null;
@@ -83,6 +91,8 @@ export class YSkillSurvivorGame {
       : null;
     this._bossArenaUnlocked = false;
     this._bossFightLocked = false;
+    this._bossPortalOpenBanner = null;
+    this._collisionDebug = false;
     this._bgImage = null;
     this._bgImageReady = false;
     if (this.worldConfig?.backgroundAsset) {
@@ -135,6 +145,11 @@ export class YSkillSurvivorGame {
 
   _bindInput() {
     this._onKeyDown = (e) => {
+      if (e.key === "F2" && isDevEnvironment()) {
+        e.preventDefault();
+        this._collisionDebug = !this._collisionDebug;
+        return;
+      }
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "z", "q"].includes(e.key)) {
         e.preventDefault();
       }
@@ -336,6 +351,7 @@ export class YSkillSurvivorGame {
     this._bossWarning = null;
     this._bossArenaUnlocked = false;
     this._bossFightLocked = false;
+    this._bossPortalOpenBanner = null;
     this._stageCleared = false;
     this.invulnMs = 800;
     this.shakeMs = 0;
@@ -446,6 +462,7 @@ export class YSkillSurvivorGame {
     if (this.worldConfig) {
       const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R, {
         lockBossArena: this._bossFightLocked,
+        bossArenaUnlocked: this._bossArenaUnlocked || this._bossFightLocked,
       });
       this.player.x = p.x;
       this.player.y = p.y;
@@ -674,18 +691,15 @@ export class YSkillSurvivorGame {
   _updateAdventureBoss() {
     if (this._bossSpawned) return;
 
-    if (
-      !this._bossArenaUnlocked &&
-      playerNearBossArena(this.worldConfig, this.player.x, this.player.y) &&
-      canUnlockBoss(this.worldConfig, this.elapsedMs, this.kills)
-    ) {
+    if (!this._bossArenaUnlocked && canUnlockBoss(this.worldConfig, this.elapsedMs, this.kills)) {
       this._bossArenaUnlocked = true;
+      this._bossPortalOpenBanner = { startedAt: this.elapsedMs, duration: 3500 };
     }
 
     if (
       this._bossArenaUnlocked &&
       !this._bossWarning &&
-      playerNearBossArena(this.worldConfig, this.player.x, this.player.y)
+      playerInsideBossArena(this.worldConfig, this.player.x, this.player.y, PLAYER_R)
     ) {
       this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
     }
@@ -975,67 +989,155 @@ export class YSkillSurvivorGame {
 
     if (this._bgImageReady && this._bgImage) {
       ctx.drawImage(this._bgImage, 0, 0, w, h);
-      return;
+    } else {
+      ctx.fillStyle = "#071008";
+      ctx.fillRect(0, 0, w, h);
+
+      for (const r of this.worldConfig?.walkableRects || []) {
+        const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+        if (r.zone === "clearing") {
+          grd.addColorStop(0, "#1a3d28");
+          grd.addColorStop(1, "#142f20");
+        } else if (r.zone === "spawn") {
+          grd.addColorStop(0, "#152a1c");
+          grd.addColorStop(1, "#0f2016");
+        } else {
+          grd.addColorStop(0, "#132618");
+          grd.addColorStop(1, "#0e1d12");
+        }
+        ctx.fillStyle = grd;
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+      }
+
+      const ba = this.worldConfig?.bossArena;
+      if (ba) {
+        ctx.fillStyle = "#1a3328";
+        ctx.beginPath();
+        ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
-    ctx.fillStyle = "#071008";
-    ctx.fillRect(0, 0, w, h);
+    if (this.running) {
+      ctx.fillStyle = "rgba(4, 8, 12, 0.2)";
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  _drawBossPortalBarrier(ctx) {
+    if (this._bossArenaUnlocked || !this.worldConfig?.bossPortalBarrier) return;
+    const b = this.worldConfig.bossPortalBarrier;
+    const cx = (b.xMin + b.xMax) / 2;
+    const w = b.xMax - b.xMin;
+    const h = 22;
+    const pulse = 0.55 + 0.25 * Math.sin(this.elapsedMs / 280);
+
+    ctx.save();
+    ctx.translate(cx, b.y);
+
+    const grd = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    grd.addColorStop(0, `rgba(94, 234, 212, ${0.15 + pulse * 0.2})`);
+    grd.addColorStop(0.5, `rgba(168, 85, 247, ${0.35 + pulse * 0.25})`);
+    grd.addColorStop(1, `rgba(94, 234, 212, ${0.15 + pulse * 0.2})`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+
+    ctx.strokeStyle = `rgba(94, 234, 212, ${0.5 + pulse * 0.3})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+    ctx.strokeStyle = `rgba(168, 85, 247, ${0.45 + pulse * 0.2})`;
+    ctx.lineWidth = 1.5;
+    const runeCount = 7;
+    for (let i = 0; i < runeCount; i++) {
+      const rx = -w / 2 + ((i + 0.5) / runeCount) * w;
+      ctx.beginPath();
+      ctx.moveTo(rx, -h / 2 + 3);
+      ctx.lineTo(rx + 4, 0);
+      ctx.lineTo(rx, h / 2 - 3);
+      ctx.lineTo(rx - 4, 0);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    if (playerNearBossPortal(this.worldConfig, this.player.x, this.player.y)) {
+      ctx.font = "600 11px system-ui,sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
+      ctx.lineWidth = 3;
+      const label = this.tPortalSealed();
+      ctx.strokeText(label, 0, -h / 2 - 10);
+      ctx.fillText(label, 0, -h / 2 - 10);
+    }
+
+    ctx.restore();
+  }
+
+  _drawCollisionDebug(ctx) {
+    const zoneColors = {
+      spawn: "rgba(34, 197, 94, 0.28)",
+      path_lower: "rgba(59, 130, 246, 0.28)",
+      clearing: "rgba(250, 204, 21, 0.22)",
+      runes: "rgba(168, 85, 247, 0.28)",
+      path: "rgba(59, 130, 246, 0.28)",
+      approach: "rgba(168, 85, 247, 0.28)",
+    };
 
     for (const r of this.worldConfig?.walkableRects || []) {
-      const grd = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
-      if (r.zone === "clearing") {
-        grd.addColorStop(0, "#1a3d28");
-        grd.addColorStop(1, "#142f20");
-      } else if (r.zone === "spawn") {
-        grd.addColorStop(0, "#152a1c");
-        grd.addColorStop(1, "#0f2016");
-      } else {
-        grd.addColorStop(0, "#132618");
-        grd.addColorStop(1, "#0e1d12");
-      }
-      ctx.fillStyle = grd;
+      ctx.fillStyle = zoneColors[r.zone] || "rgba(34, 197, 94, 0.25)";
       ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(r.x, r.y, r.w, r.h);
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+      ctx.textAlign = "left";
+      ctx.fillText(r.zone || "zone", r.x + 4, r.y + 12);
     }
 
     const ba = this.worldConfig?.bossArena;
     if (ba) {
-      ctx.fillStyle = "#1a3328";
+      ctx.fillStyle = this._bossArenaUnlocked ? "rgba(94, 234, 212, 0.12)" : "rgba(239, 68, 68, 0.12)";
       ctx.beginPath();
       ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = "rgba(94, 234, 212, 0.35)";
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = this._bossArenaUnlocked ? "rgba(94, 234, 212, 0.7)" : "rgba(239, 68, 68, 0.7)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(ba.x, ba.y, ba.radius, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.strokeStyle = "rgba(94, 234, 212, 0.15)";
-      ctx.setLineDash([8, 10]);
+    }
+
+    const portal = this.worldConfig?.bossPortalBarrier;
+    if (portal && !this._bossArenaUnlocked) {
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.85)";
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(ba.x, ba.y, ba.radius - 18, 0, Math.PI * 2);
+      ctx.moveTo(portal.xMin, portal.y);
+      ctx.lineTo(portal.xMax, portal.y);
       ctx.stroke();
+    }
+
+    ctx.fillStyle = "rgba(232, 121, 249, 0.9)";
+    ctx.beginPath();
+    ctx.arc(this.player.x, this.player.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    if (this.camera) {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(this.camera.x, this.camera.y, this.viewW, this.viewH);
       ctx.setLineDash([]);
-    }
-
-    ctx.fillStyle = "rgba(4, 8, 6, 0.85)";
-    ctx.fillRect(0, 0, w, 80);
-    ctx.fillRect(0, h - 60, w, 60);
-    ctx.fillRect(0, 0, 70, h);
-    ctx.fillRect(w - 70, 0, 70, h);
-
-    ctx.strokeStyle = "rgba(34, 197, 94, 0.08)";
-    ctx.lineWidth = 1;
-    const step = 48;
-    for (let gx = 0; gx <= w; gx += step) {
-      ctx.beginPath();
-      ctx.moveTo(gx, 0);
-      ctx.lineTo(gx, h);
-      ctx.stroke();
-    }
-    for (let gy = 0; gy <= h; gy += step) {
-      ctx.beginPath();
-      ctx.moveTo(0, gy);
-      ctx.lineTo(w, gy);
-      ctx.stroke();
     }
   }
 
@@ -1068,10 +1170,12 @@ export class YSkillSurvivorGame {
     }
 
     if (this.worldConfig && this.camera) {
-      this._drawWorldBackground(ctx);
       ctx.save();
       this.camera.applyTransform(ctx);
+      this._drawWorldBackground(ctx);
+      this._drawBossPortalBarrier(ctx);
       this._drawEntities(ctx);
+      if (this._collisionDebug) this._drawCollisionDebug(ctx);
       ctx.restore();
       this._drawScreenOverlay(ctx);
     } else {
@@ -1145,6 +1249,40 @@ export class YSkillSurvivorGame {
   }
 
   _drawScreenOverlay(ctx) {
+    if (this._collisionDebug && this.worldConfig) {
+      const cam = this.camera;
+      const lines = [
+        "DEBUG COLLISIONS (F2)",
+        `Joueur: ${Math.round(this.player.x)}, ${Math.round(this.player.y)}`,
+        cam ? `Caméra: ${Math.round(cam.x)}, ${Math.round(cam.y)}` : "",
+        `Portail boss: ${this._bossArenaUnlocked ? "OUVERT" : "VERROUILLÉ"}`,
+        this._bossFightLocked ? "Combat boss: VERROUILLÉ" : "Combat boss: libre",
+      ].filter(Boolean);
+      ctx.font = "11px monospace";
+      ctx.textAlign = "left";
+      let y = 72;
+      for (const line of lines) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+        ctx.fillRect(8, y - 11, ctx.measureText(line).width + 8, 14);
+        ctx.fillStyle = "rgba(94, 234, 212, 0.95)";
+        ctx.fillText(line, 12, y);
+        y += 14;
+      }
+    }
+
+    if (this._bossPortalOpenBanner) {
+      const elapsed = this.elapsedMs - this._bossPortalOpenBanner.startedAt;
+      if (elapsed < this._bossPortalOpenBanner.duration) {
+        const fade = elapsed < 400 ? elapsed / 400 : elapsed > 3000 ? (3500 - elapsed) / 500 : 1;
+        ctx.fillStyle = `rgba(94, 234, 212, ${0.75 * fade})`;
+        ctx.font = "bold 15px system-ui,sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(this.tPortalOpen(), this.viewW / 2, 52);
+      } else {
+        this._bossPortalOpenBanner = null;
+      }
+    }
+
     if (this._bossWarning) {
       const t = (this.elapsedMs - this._bossWarning.startedAt) / this._bossWarning.duration;
       const bossLabel = this.stageConfig?.bossName || this.tBoss();

@@ -70,7 +70,7 @@ export const BOSS_DEFINITIONS = {
     color: "#5eead4",
     r: 26,
     hp: 55,
-    speedMul: 0.42,
+    speedMul: 0.7,
     behavior: "slime",
     bonusScore: 400,
     regenPerSec: 0.4,

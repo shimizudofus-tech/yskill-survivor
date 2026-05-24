@@ -1117,6 +1117,22 @@ export class YSkillSurvivorGame {
       ctx.fillText(c.zone || "circle", c.x, c.y - c.radius + 12);
     }
 
+    for (const c of this.worldConfig?.blockedCircles || []) {
+      ctx.fillStyle = "rgba(239, 68, 68, 0.32)";
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(239, 68, 68, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = "10px monospace";
+      ctx.fillStyle = "rgba(255, 220, 220, 0.95)";
+      ctx.textAlign = "center";
+      ctx.fillText(c.zone || "blocked", c.x, c.y);
+    }
+
     const ba = this.worldConfig?.bossArena;
     if (ba) {
       ctx.fillStyle = this._bossArenaUnlocked ? "rgba(94, 234, 212, 0.12)" : "rgba(239, 68, 68, 0.12)";

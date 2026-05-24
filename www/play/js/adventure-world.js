@@ -31,6 +31,10 @@ export const STAGE_01_WORLD = {
   walkableCircles: [
     { x: 360, y: 760, radius: 260, zone: "main_clearing" },
   ],
+  blockedCircles: [
+    { x: 230, y: 990, radius: 58, zone: "tree_left" },
+    { x: 495, y: 985, radius: 60, zone: "tree_right" },
+  ],
   theme: "forest",
   backgroundAsset: "assets/adventure/stage-01/backgrounds/stage_01_gameplay_map.png",
 };
@@ -67,6 +71,7 @@ export function getAdventureWorldConfig(stageId) {
       ...STAGE_01_WORLD,
       walkableRects: STAGE_01_WORLD.walkableRects.map((r) => ({ ...r })),
       walkableCircles: (STAGE_01_WORLD.walkableCircles || []).map((c) => ({ ...c })),
+      blockedCircles: (STAGE_01_WORLD.blockedCircles || []).map((c) => ({ ...c })),
     };
   }
   return defaultAdventureWorld(id);
@@ -78,9 +83,17 @@ export function isInsideBossArena(world, x, y, margin = 0) {
   return dist(x, y, ba.x, ba.y) <= ba.radius - margin;
 }
 
+export function isInsideBlockedCircle(world, x, y, margin = 0) {
+  for (const c of world?.blockedCircles || []) {
+    if (dist(x, y, c.x, c.y) <= c.radius + margin) return true;
+  }
+  return false;
+}
+
 export function isWalkable(world, x, y, margin = 0, { allowBossArena = false } = {}) {
   if (!world) return true;
   const { walkableRects, walkableCircles, bossArena } = world;
+  if (isInsideBlockedCircle(world, x, y, margin)) return false;
   for (const r of walkableRects || []) {
     if (
       x >= r.x + margin &&

@@ -72,6 +72,13 @@ export async function completeRankedRun(body) {
   });
 }
 
+export async function abandonRankedRun(body) {
+  return apiFetch("/v1/runs/abandon", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function fetchAdventureLeaderboard(stageId) {
   return apiFetch(`/v1/leaderboards/adventure?stageId=${encodeURIComponent(stageId)}`);
 }

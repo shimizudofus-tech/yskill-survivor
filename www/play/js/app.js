@@ -30,6 +30,7 @@ import {
   isCoarsePointer,
 } from "./platform.js";
 import {
+  abandonRankedRun,
   fetchAdventureLeaderboard,
   fetchAuthMe,
   fetchFullSkillLeaderboard,
@@ -375,6 +376,15 @@ async function submitRankedResult(payload, { bossDefeated = false } = {}) {
   }
 }
 
+function abandonUnsettledRankedRun() {
+  if (!rankedRunId || !authUser || runSettled) return;
+  const runId = rankedRunId;
+  rankedRunId = null;
+  void abandonRankedRun({ runId }).catch((err) => {
+    console.warn("ranked run abandon failed", err);
+  });
+}
+
 function showRankedStatus(result, { revived = false } = {}) {
   if (!vicRankedStatus) return;
   vicRankedStatus.hidden = false;
@@ -559,6 +569,7 @@ function showLevelUp(choices) {
 }
 
 function goHome() {
+  abandonUnsettledRankedRun();
   runPaused = false;
   runSettled = false;
   pauseOverlay.hidden = true;

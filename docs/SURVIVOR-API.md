@@ -65,6 +65,7 @@ Le client pointe vers `http://localhost:8787` sur localhost. Les cookies cross-o
 | POST | `/v1/auth/logout` | Cookie | Déconnexion |
 | POST | `/v1/runs/start` | Oui | Démarre une run classée |
 | POST | `/v1/runs/complete` | Oui | Termine la run + leaderboard si éligible |
+| POST | `/v1/runs/abandon` | Oui | Libère une run active quittée avant règlement |
 | GET | `/v1/leaderboards/adventure?stageId=1` | Non* | Top 50 stage |
 | GET | `/v1/leaderboards/fullskill` | Non* | Top 50 Full Skill |
 
@@ -75,7 +76,8 @@ Le client pointe vers `http://localhost:8787` sur localhost. Les cookies cross-o
 1. Joueur connecté → `POST /v1/runs/start` `{ "mode": "adventure", "stageId": 1 }` ou `{ "mode": "fullskill", "pactId": "velocity" }`.
 2. Réponse : `runId`, `seed`, `expiresAt`.
 3. Fin de run → `POST /v1/runs/complete` avec `runId`, `score`, `durationMs`, `bossDefeated`, `revived`, `kills`.
-4. Entrée leaderboard si **boss vaincu** et **pas de revive** (Aventure) ; Full Skill : score valide sans revive.
+4. Quitter avant victoire/défaite → `POST /v1/runs/abandon` avec `runId`.
+5. Entrée leaderboard si **boss vaincu** et **pas de revive** (Aventure) ; Full Skill : score valide sans revive.
 
 ## Client
 

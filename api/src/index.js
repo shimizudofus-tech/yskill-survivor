@@ -7,7 +7,7 @@ import {
   SESSION_COOKIE,
 } from "./lib/http.js";
 import { authMe, handleOAuthCallback, loginRedirect, sessionUser } from "./lib/auth.js";
-import { completeRun, fetchLeaderboard, publicConfig, startRun } from "./lib/runs.js";
+import { abandonRun, completeRun, fetchLeaderboard, publicConfig, startRun } from "./lib/runs.js";
 
 export default {
   async fetch(request, env) {
@@ -104,6 +104,16 @@ export default {
       if (!user) return json({ error: "sign_in_required" }, 401, corsHeaders(request, env), request, env);
       const body = await readJsonBody(request);
       const result = await completeRun(kv, user, body);
+      if (result.error) return json(result, result.status || 400, corsHeaders(request, env), request, env);
+      return json(result, 200, corsHeaders(request, env), request, env);
+    }
+
+    if (path === "/v1/runs/abandon" && method === "POST") {
+      if (!kv) return json({ error: "kv_not_configured" }, 503, corsHeaders(request, env), request, env);
+      const user = await sessionUser(request, env, kv);
+      if (!user) return json({ error: "sign_in_required" }, 401, corsHeaders(request, env), request, env);
+      const body = await readJsonBody(request);
+      const result = await abandonRun(kv, user, body);
       if (result.error) return json(result, result.status || 400, corsHeaders(request, env), request, env);
       return json(result, 200, corsHeaders(request, env), request, env);
     }

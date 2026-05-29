@@ -183,6 +183,31 @@ export async function completeRun(kv, user, body) {
   };
 }
 
+export async function abandonRun(kv, user, body) {
+  const runId = String(body?.runId || "").trim();
+  const run = runId ? await getRun(kv, runId) : await activeRunForUser(kv, user.id);
+  if (!run || run.userId !== user.id) return { error: "run_not_found", status: 404 };
+
+  if (run.status !== "active") {
+    return {
+      ok: true,
+      abandoned: false,
+      status: run.status,
+    };
+  }
+
+  const now = Date.now();
+  run.status = "abandoned";
+  run.updatedAt = now;
+  await putRun(kv, run);
+  await kv.delete(`run:active:${user.id}:${run.id}`);
+
+  return {
+    ok: true,
+    abandoned: true,
+  };
+}
+
 async function applyLeaderboard(kv, user, run, validated, now) {
   const entry = {
     userId: user.id,

@@ -16,9 +16,11 @@ import {
   getAdventureWorldConfig,
   FollowCamera,
   constrainMove,
+  clampToBossArena,
   isWalkable,
   randomWalkablePoint,
   randomSpawnNearPlayer,
+  playerInsideBossArena,
   playerNearBossArena,
   canUnlockBoss,
 } from "./adventure-world.js";
@@ -439,7 +441,9 @@ export class YSkillSurvivorGame {
     const ny = oy + (this.player.vy * dt) / 1000;
 
     if (this.worldConfig) {
-      const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R);
+      const p = constrainMove(this.worldConfig, ox, oy, nx, ny, PLAYER_R, {
+        lockBossArena: this._bossFightLocked,
+      });
       this.player.x = p.x;
       this.player.y = p.y;
       this.camera?.follow(this.player.x, this.player.y);
@@ -648,7 +652,11 @@ export class YSkillSurvivorGame {
     e.y += dy * ((baseSpeed * mul * dt) / 1000);
 
     if (this.worldConfig) {
-      if (!isWalkable(this.worldConfig, e.x, e.y, e.r * 0.45)) {
+      if (this._bossFightLocked && this.worldConfig.bossArena) {
+        const c = clampToBossArena(this.worldConfig, e.x, e.y, e.r);
+        e.x = c.x;
+        e.y = c.y;
+      } else if (!isWalkable(this.worldConfig, e.x, e.y, e.r * 0.45)) {
         e.x -= dx * ((baseSpeed * mul * dt) / 1000);
         e.y -= dy * ((baseSpeed * mul * dt) / 1000);
       }
@@ -666,7 +674,8 @@ export class YSkillSurvivorGame {
     if (
       this._bossArenaUnlocked &&
       !this._bossWarning &&
-      !this._bossSpawned
+      !this._bossSpawned &&
+      playerInsideBossArena(this.worldConfig, this.player.x, this.player.y, PLAYER_R)
     ) {
       this._bossWarning = { startedAt: this.elapsedMs, duration: 2000 };
     }

@@ -1,6 +1,6 @@
 /**
  * Runtime asset paths for AssetManager (aligned with www/assets/ASSETS_MANIFEST.md).
- * Only INTEGRATED PNG/OGG paths — add entries when assets ship.
+ * Only INTEGRATED image/audio paths — add entries when assets ship.
  */
 
 import { PLAYABLE_HEROES } from "./hero-config.js";
@@ -12,7 +12,7 @@ const MOVEMENT_CLIPS = ["idle", "walkDown", "walkSide", "walkUp"];
 export const CORE_IMAGE_PATHS = [
   "assets/branding/logo/logo-yskill-survivor-full.png",
   "assets/branding/logo/icon-ys-512.png",
-  "assets/ui/icons/icon-ys-currency.png",
+  "assets/branding/logo/logo-ys-currency.svg",
 ];
 
 /** Audio to preload when files exist (skipped silently if 404). */

@@ -4,6 +4,8 @@
   "private": true,
   "description": "YSkill Survivor — arcade survivor mobile (web + Android)",
   "scripts": {
+    "test": "npm run test:assets",
+    "test:assets": "node scripts/validate-runtime-assets.mjs",
     "start": "npx --yes serve www -p 5173",
     "api:dev": "npm run dev --prefix api",
     "api:deploy": "npm run deploy --prefix api",

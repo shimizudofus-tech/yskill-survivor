@@ -51,6 +51,10 @@ export async function putLeaderboard(kv, mode, stageId, rows) {
 }
 
 export function upsertLeaderboardRow(rows, entry, compareFn) {
+  const existing = rows.find((r) => r.userId === entry.userId);
+  if (existing && compareFn(existing, entry) <= 0) {
+    return rows.slice().sort(compareFn).slice(0, 50);
+  }
   const next = rows.filter((r) => r.userId !== entry.userId);
   next.push(entry);
   next.sort(compareFn);
